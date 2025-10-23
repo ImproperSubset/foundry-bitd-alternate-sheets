@@ -521,6 +521,107 @@ export class BladesAlternateActorSheet extends BladesSheet {
       );
     }
 
+    const ownedAbilityNames = new Set();
+    this.actor.items
+      .filter((item) => item.type === "ability")
+      .forEach((item) => {
+        ownedAbilityNames.add(item.name);
+        const trimmed = Utils.trimClassFromName(item.name);
+        if (trimmed) ownedAbilityNames.add(trimmed);
+      });
+
+    const abilityCostFor = (ability) => {
+      const rawCost = ability?.system?.price ?? ability?.system?.cost ?? 1;
+      const parsed = Number(rawCost);
+      if (Number.isNaN(parsed) || parsed < 1) return 1;
+      return Math.floor(parsed);
+    };
+
+    let rawAbilityProgress =
+      this.actor.getFlag(MODULE_ID, "abilityProgress") || {};
+    if (!rawAbilityProgress || typeof rawAbilityProgress !== "object") {
+      rawAbilityProgress = {};
+    } else {
+      rawAbilityProgress = foundry.utils.duplicate(rawAbilityProgress);
+    }
+
+    const cleanedProgress = {};
+    const touchedProgressKeys = new Set();
+    for (const ability of combined_abilities_list) {
+      const trimmedName = Utils.trimClassFromName(ability.name);
+      const abilityKey = trimmedName || ability._id || ability.name;
+      const cost = abilityCostFor(ability);
+
+      const candidateKeys = [
+        abilityKey,
+        ability.name,
+        ability._id,
+        trimmedName,
+      ]
+        .filter((key) => typeof key === "string" && key.length)
+        .filter((key, index, arr) => arr.indexOf(key) === index);
+
+      let progress = 0;
+      for (const candidate of candidateKeys) {
+        const numeric = Number(rawAbilityProgress[candidate]);
+        if (!Number.isNaN(numeric) && numeric > 0) {
+          progress = Math.max(progress, Math.min(numeric, cost));
+          touchedProgressKeys.add(candidate);
+        }
+      }
+
+      const ownsAbility =
+        ownedAbilityNames.has(ability.name) ||
+        (trimmedName && ownedAbilityNames.has(trimmedName));
+
+      if (ownsAbility) {
+        progress = cost;
+      }
+
+      progress = Math.max(0, Math.min(progress, cost));
+      ability._progress = progress;
+      ability._progressKey = abilityKey;
+
+      if (!ownsAbility && progress > 0 && progress < cost) {
+        cleanedProgress[abilityKey] = progress;
+      }
+    }
+
+    for (const [key, value] of Object.entries(rawAbilityProgress)) {
+      if (touchedProgressKeys.has(key)) continue;
+      const numeric = Number(value);
+      if (Number.isNaN(numeric) || numeric <= 0) continue;
+      const canonicalKey = Utils.trimClassFromName(key) || key;
+      cleanedProgress[canonicalKey] = Math.max(
+        cleanedProgress[canonicalKey] ?? 0,
+        Math.min(Math.floor(numeric), 99)
+      );
+    }
+
+    const serializeProgress = (obj) =>
+      JSON.stringify(
+        Object.entries(obj)
+          .map(([key, value]) => [Utils.trimClassFromName(key) || key, Number(value) || 0])
+          .filter(([, value]) => value > 0)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+      );
+
+    const rawSerialized = serializeProgress(rawAbilityProgress);
+    const cleanedSerialized = serializeProgress(cleanedProgress);
+
+    if (rawSerialized !== cleanedSerialized) {
+      const cleanedKeys = Object.keys(cleanedProgress);
+      if (cleanedKeys.length > 0) {
+        await this.actor.setFlag(
+          MODULE_ID,
+          "abilityProgress",
+          cleanedProgress
+        );
+      } else {
+        await this.actor.unsetFlag(MODULE_ID, "abilityProgress");
+      }
+    }
+
     all_generic_items = await Utils.getVirtualListOfItems(
       "item",
       sheetData,
@@ -914,15 +1015,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       );
     });
 
-    html.find(".item-block .main-checkbox").change((ev) => {
-      let checkbox = ev.target;
-      let itemId = checkbox.closest(".item-block").dataset.itemId;
-      let item = this.actor.items.get(itemId);
-      if (item) {
-        return item.update({ system: { equipped: checkbox.checked } });
-      }
-    });
-
     html.find(".item-block .child-checkbox").click((ev) => {
       let checkbox = ev.target;
       let $main = $(checkbox).siblings(".main-checkbox");
@@ -934,18 +1026,139 @@ export class BladesAlternateActorSheet extends BladesSheet {
       await this.actor.deleteEmbeddedDocuments("Item", [item_id]);
     });
 
-    html.find(".ability-block .main-checkbox").change(async (ev) => {
+    html.find(".ability-checkbox").change(async (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
-      let checkbox = ev.target;
-      let ability_id = checkbox.closest(".ability-block").dataset.abilityId;
-      await Utils.toggleOwnership(
-        checkbox.checked,
-        this.actor,
-        "ability",
-        ability_id
-      );
-      this.actor.sheet.render(false);
+
+      if (this._abilityCheckboxLock) return;
+      this._abilityCheckboxLock = true;
+
+      try {
+        const checkboxEl = ev.currentTarget;
+        const abilityBlock = checkboxEl.closest(".ability-block");
+        if (!abilityBlock) return;
+
+        const abilityId = abilityBlock.dataset.abilityId;
+        const abilityName = abilityBlock.dataset.abilityName || "";
+        const abilityCost = Number(abilityBlock.dataset.abilityCost) || 1;
+        const trimmedName = Utils.trimClassFromName(abilityName);
+        let progressKey =
+          abilityBlock.dataset.abilityProgressKey ||
+          trimmedName ||
+          abilityId ||
+          abilityName;
+
+        const checkboxList = Array.from(
+          abilityBlock.querySelectorAll(".ability-checkbox")
+        ).sort(
+          (a, b) =>
+            Number(a.dataset.abilitySlot ?? 0) -
+            Number(b.dataset.abilitySlot ?? 0)
+        );
+
+        let progressMap = foundry.utils.duplicate(
+          this.actor.getFlag(MODULE_ID, "abilityProgress") || {}
+        );
+        if (!progressMap || typeof progressMap !== "object") {
+          progressMap = {};
+        }
+
+        const ownsAbility = this.actor.items.some((item) => {
+          const itemTrimmed = Utils.trimClassFromName(item.name);
+          return itemTrimmed === trimmedName || item.name === abilityName;
+        });
+
+        const candidateKeys = Array.from(
+          new Set(
+            [progressKey, trimmedName, abilityId, abilityName].filter(
+              (key) => typeof key === "string" && key.length
+            )
+          )
+        );
+
+        let currentProgress = Number(
+          abilityBlock.dataset.abilityProgress ?? 0
+        );
+        if (currentProgress <= 0) {
+          for (const key of candidateKeys) {
+            const numeric = Number(progressMap[key]);
+            if (!Number.isNaN(numeric) && numeric > 0) {
+              currentProgress = Math.max(currentProgress, numeric);
+            }
+          }
+        }
+        if (currentProgress <= 0 && ownsAbility) {
+          currentProgress = abilityCost;
+        }
+
+        let targetProgress =
+          currentProgress + (checkboxEl.checked ? 1 : -1);
+        targetProgress = Math.max(0, Math.min(targetProgress, abilityCost));
+
+        let nextOwnsAbility = ownsAbility;
+        if (targetProgress >= abilityCost) {
+          targetProgress = abilityCost;
+          if (!ownsAbility) {
+            await Utils.toggleOwnership(
+              true,
+              this.actor,
+              "ability",
+              abilityId
+            );
+            nextOwnsAbility = true;
+          }
+        } else if (targetProgress < abilityCost && ownsAbility) {
+          await Utils.toggleOwnership(
+            false,
+            this.actor,
+            "ability",
+            abilityId
+          );
+          nextOwnsAbility = false;
+        }
+
+        const appliedProgress = nextOwnsAbility
+          ? abilityCost
+          : targetProgress;
+
+        abilityBlock.dataset.abilityProgress = String(appliedProgress);
+        abilityBlock.dataset.abilityProgressKey = progressKey;
+
+        checkboxList.forEach((el, index) => {
+          const isChecked = index < appliedProgress;
+          el.checked = isChecked;
+          if (isChecked) {
+            el.setAttribute("checked", "checked");
+          } else {
+            el.removeAttribute("checked");
+          }
+        });
+
+        for (const key of candidateKeys) {
+          delete progressMap[key];
+        }
+
+        if (!nextOwnsAbility && appliedProgress > 0) {
+          progressMap[progressKey] = appliedProgress;
+        }
+
+        const progressKeys = Object.keys(progressMap);
+        if (progressKeys.length > 0) {
+          await this.actor.setFlag(
+            MODULE_ID,
+            "abilityProgress",
+            progressMap
+          );
+        } else {
+          await this.actor.unsetFlag(MODULE_ID, "abilityProgress");
+        }
+
+        if (nextOwnsAbility !== ownsAbility) {
+          await this.render(false);
+        }
+      } finally {
+        this._abilityCheckboxLock = false;
+      }
     });
 
     html.find(".item-block .main-checkbox").change(async (ev) => {

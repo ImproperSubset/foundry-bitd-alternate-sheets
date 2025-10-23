@@ -1,5 +1,15 @@
-<div class="ability-block" data-ability-id="{{ability._id}}">
-    <input type="checkbox" class="ability-checkbox main-checkbox" id="character-{{actor._id}}-ability-{{ability._id}}-1" {{checked (owns-ability actor ability.name)}}>
+<div class="ability-block" data-ability-id="{{ability._id}}" data-ability-name="{{ability.name}}" data-ability-cost="{{ability-cost ability}}" data-ability-progress="{{ability._progress}}" data-ability-progress-key="{{ability._progressKey}}">
+    <div class="ability-checkboxes">
+        {{#times (ability-cost ability)}}
+            <input
+                type="checkbox"
+                class="ability-checkbox"
+                id="character-{{../actor._id}}-ability-{{../ability._id}}-{{inc this}}"
+                data-ability-slot="{{inc this}}"
+                {{#ifCond (inc this) "<=" ../ability._progress}}checked{{/ifCond}}
+            >
+        {{/times}}
+    </div>
     <label for="character-{{actor._id}}-ability-{{ability._id}}-1">
         <span class="ability-name {{#if actor.flags.bitd-alternate-sheets.allow-edit}}{{#unless ability.system.virtual}}clickable-edit{{/unless}}{{/if}}">{{clean-name ability.name}}:</span>
         <span class="ability-description">{{{md ability.system.description}}}</span>

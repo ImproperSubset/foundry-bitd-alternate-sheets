@@ -115,6 +115,47 @@ export const registerHandlebarsHelpers = function () {
     return actor.items.some((item) => item.name == ability_name);
   });
 
+  Handlebars.registerHelper("ability-cost", function (ability) {
+    const raw = ability?.system?.price ?? ability?.system?.cost ?? 1;
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed) || parsed < 1) return 1;
+    return Math.floor(parsed);
+  });
+
+  Handlebars.registerHelper("ability-progress", function (actor, ability) {
+    if (!ability) return 0;
+    if (ability._progress !== undefined) return Number(ability._progress) || 0;
+
+    const abilityName = ability.name ?? "";
+    const trimmedName = Utils.trimClassFromName(abilityName);
+
+    let actorDoc = actor?.items ? actor : game.actors?.get(actor?._id);
+    if (!actorDoc) return 0;
+
+    const progressMap =
+      actorDoc.getFlag("bitd-alternate-sheets", "abilityProgress") || {};
+
+    if (trimmedName && progressMap[trimmedName] !== undefined) {
+      return Number(progressMap[trimmedName]) || 0;
+    }
+    if (abilityName && progressMap[abilityName] !== undefined) {
+      return Number(progressMap[abilityName]) || 0;
+    }
+
+    const abilityCost = Number(ability?.system?.price ?? ability?.system?.cost ?? 1) || 1;
+
+    const ownsAbility = actorDoc.items?.some((item) => {
+      const itemTrimmed = Utils.trimClassFromName(item.name);
+      return itemTrimmed === trimmedName || item.name === abilityName;
+    });
+
+    return ownsAbility ? abilityCost : 0;
+  });
+
+  Handlebars.registerHelper("inc", function (value) {
+    return Number(value) + 1;
+  });
+
   Handlebars.registerHelper("times_from_2", function (n, block) {
     var accum = "";
     n = parseInt(n);
@@ -144,8 +185,13 @@ export const registerHandlebarsHelpers = function () {
   });
 
   Handlebars.registerHelper("times", function (n, block) {
-    var accum = "";
-    for (var i = 0; i < n; ++i) accum += block.fn(i);
+    let accum = "";
+    const count = Math.max(0, Number.parseInt(n, 10) || 0);
+    const data = block.data ? Handlebars.createFrame(block.data) : undefined;
+    for (let i = 0; i < count; ++i) {
+      if (data) data.index = i;
+      accum += block.fn(i, { data });
+    }
     return accum;
   });
 
