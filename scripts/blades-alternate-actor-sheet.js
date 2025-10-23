@@ -17,6 +17,16 @@ export class BladesAlternateActorSheet extends BladesSheet {
   allow_edit = false;
   show_debug = false;
 
+  static _serializeProgressMap(map) {
+    if (!map || typeof map !== "object") return "[]";
+    return JSON.stringify(
+      Object.entries(map)
+        .map(([key, value]) => [Utils.trimClassFromName(key) || key, Number(value) || 0])
+        .filter(([, value]) => value > 0)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+    );
+  }
+
   /** @override */
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -598,18 +608,10 @@ export class BladesAlternateActorSheet extends BladesSheet {
       );
     }
 
-    const serializeProgress = (obj) =>
-      JSON.stringify(
-        Object.entries(obj)
-          .map(([key, value]) => [Utils.trimClassFromName(key) || key, Number(value) || 0])
-          .filter(([, value]) => value > 0)
-          .sort((a, b) => a[0].localeCompare(b[0]))
-      );
-
-    const rawSerialized = serializeProgress(rawAbilityProgress);
-    const cleanedSerialized = serializeProgress(cleanedProgress);
-
-    if (rawSerialized !== cleanedSerialized) {
+    if (
+      BladesAlternateActorSheet._serializeProgressMap(rawAbilityProgress) !==
+      BladesAlternateActorSheet._serializeProgressMap(cleanedProgress)
+    ) {
       const cleanedKeys = Object.keys(cleanedProgress);
       if (cleanedKeys.length > 0) {
         await this.actor.setFlag(
@@ -719,6 +721,42 @@ export class BladesAlternateActorSheet extends BladesSheet {
     }
 
     return sheetData;
+  }
+
+  async _synchronizeAbilityProgressFlags() {
+    const root = this.element?.[0];
+    if (!root) return;
+
+    const nextProgress = {};
+    const abilityBlocks = root.querySelectorAll(".ability-block");
+    abilityBlocks.forEach((block) => {
+      const cost = Number(block.dataset.abilityCost ?? 1) || 1;
+      const progress = Number(block.dataset.abilityProgress ?? 0) || 0;
+      const key =
+        block.dataset.abilityProgressKey ||
+        Utils.trimClassFromName(block.dataset.abilityName || "") ||
+        block.dataset.abilityId ||
+        block.dataset.abilityName ||
+        "";
+
+      if (!key) return;
+      if (progress > 0 && progress < cost) {
+        nextProgress[key] = progress;
+      }
+    });
+
+    const existingMap = this.actor.getFlag(MODULE_ID, "abilityProgress") || {};
+    const existingSerialized = BladesAlternateActorSheet._serializeProgressMap(existingMap);
+    const nextSerialized = BladesAlternateActorSheet._serializeProgressMap(nextProgress);
+
+    if (existingSerialized === nextSerialized) return;
+
+    const keys = Object.keys(nextProgress);
+    if (keys.length > 0) {
+      await this.actor.setFlag(MODULE_ID, "abilityProgress", nextProgress);
+    } else {
+      await this.actor.unsetFlag(MODULE_ID, "abilityProgress");
+    }
   }
 
   async clearLoad() {
@@ -1056,13 +1094,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
             Number(b.dataset.abilitySlot ?? 0)
         );
 
-        let progressMap = foundry.utils.duplicate(
-          this.actor.getFlag(MODULE_ID, "abilityProgress") || {}
-        );
-        if (!progressMap || typeof progressMap !== "object") {
-          progressMap = {};
-        }
-
         const ownsAbility = this.actor.items.some((item) => {
           const itemTrimmed = Utils.trimClassFromName(item.name);
           return itemTrimmed === trimmedName || item.name === abilityName;
@@ -1075,6 +1106,11 @@ export class BladesAlternateActorSheet extends BladesSheet {
             )
           )
         );
+
+        const progressMap =
+          foundry.utils.duplicate(
+            this.actor.getFlag(MODULE_ID, "abilityProgress") || {}
+          ) || {};
 
         let currentProgress = Number(
           abilityBlock.dataset.abilityProgress ?? 0
@@ -1134,24 +1170,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
           }
         });
 
-        for (const key of candidateKeys) {
-          delete progressMap[key];
-        }
-
-        if (!nextOwnsAbility && appliedProgress > 0) {
-          progressMap[progressKey] = appliedProgress;
-        }
-
-        const progressKeys = Object.keys(progressMap);
-        if (progressKeys.length > 0) {
-          await this.actor.setFlag(
-            MODULE_ID,
-            "abilityProgress",
-            progressMap
-          );
-        } else {
-          await this.actor.unsetFlag(MODULE_ID, "abilityProgress");
-        }
+        await this._synchronizeAbilityProgressFlags();
 
         if (nextOwnsAbility !== ownsAbility) {
           await this.render(false);
