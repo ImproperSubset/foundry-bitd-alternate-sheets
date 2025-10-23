@@ -807,6 +807,49 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     this.addTermTooltips(html);
 
+    html.find(".roll-die-attribute").on("click", (event) => {
+      const attributeName = event.currentTarget?.dataset?.rollAttribute;
+      if (!attributeName) return;
+
+      let diceAmount = 0;
+      try {
+        const rollData = this.actor.getRollData?.();
+        diceAmount = Number(rollData?.dice_amount?.[attributeName] ?? 0);
+      } catch (err) {
+        console.warn("Failed to determine dice amount for roll.", err);
+        diceAmount = 0;
+      }
+
+      const applyDiceToDialog = (dialog, dialogHtml) => {
+        const localizedRoll = game.i18n.localize?.("BITD.Roll") ?? "Roll";
+        const title = dialog?.title ?? "";
+        if (!title.includes(localizedRoll)) {
+          Hooks.once("renderDialog", applyDiceToDialog);
+          return;
+        }
+
+        const qtyField = dialogHtml.find('select[name="qty"]');
+        if (!qtyField.length) return;
+
+        const optionValues = qtyField
+          .find("option")
+          .map((i, el) => Number(el.value))
+          .get()
+          .filter((val) => !Number.isNaN(val));
+        if (!optionValues.length) return;
+
+        const maxValue = Math.max(...optionValues);
+        const safeDice = Math.max(
+          0,
+          Math.min(Number.isNaN(diceAmount) ? 0 : diceAmount, maxValue)
+        );
+
+        qtyField.val(String(safeDice)).trigger("change");
+      };
+
+      Hooks.once("renderDialog", applyDiceToDialog);
+    });
+
     // Everything below here is only needed if the sheet is editable
     if (!this.options.editable) return;
 
