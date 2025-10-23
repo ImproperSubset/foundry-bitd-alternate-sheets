@@ -547,6 +547,34 @@
         }
       }
 
+      .status-inline {
+        margin-top: 15px;
+
+        .status-inline-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 15px;
+
+          .inline-panel {
+            flex: 1 1 260px;
+            background-color: rgba(224, 222, 210, 0.8);
+            border-radius: 20px;
+            padding: 15px;
+            box-sizing: border-box;
+
+            .character-harm {
+              background: transparent;
+              border-radius: 0;
+              padding: 0;
+            }
+
+            .load-selection {
+              margin: 0;
+            }
+          }
+        }
+      }
+
       .stress-trauma-box {
         width: 100%;
         position: relative;

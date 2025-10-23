@@ -373,6 +373,12 @@ export class BladesAlternateActorSheet extends BladesSheet {
     sheetData.load_open = this.load_open;
     sheetData.allow_edit = this.allow_edit;
     sheetData.show_debug = this.show_debug;
+    const inlineStatusPanels = game.settings.get(
+      "bitd-alternate-sheets",
+      "inlineStatusPanels"
+    );
+    sheetData.inlineStatusPanels = inlineStatusPanels;
+    this.inlineStatusPanels = inlineStatusPanels;
     const computedAttributes = this.actor.getComputedAttributes();
     sheetData.system.attributes = computedAttributes;
     sheetData.attributes = computedAttributes;
@@ -983,42 +989,43 @@ export class BladesAlternateActorSheet extends BladesSheet {
       this.actor.update({ system: { acquaintances: acquaintances } });
     });
 
-    $(document).click((ev) => {
-      let render = false;
-      if (!$(ev.target).closest(".coins-box").length) {
-        html.find(".coins-box").removeClass("open");
-        this.coins_open = false;
-      }
-      if (!$(ev.target).closest(".harm-box").length) {
-        html.find(".harm-box").removeClass("open");
-        this.harm_open = false;
-      }
-      if (!$(ev.target).closest(".load-box").length) {
-        html.find(".load-box").removeClass("open");
-        this.load_open = false;
-      }
-    });
+    if (!this.inlineStatusPanels) {
+      $(document).click((ev) => {
+        if (!$(ev.target).closest(".coins-box").length) {
+          html.find(".coins-box").removeClass("open");
+          this.coins_open = false;
+        }
+        if (!$(ev.target).closest(".harm-box").length) {
+          html.find(".harm-box").removeClass("open");
+          this.harm_open = false;
+        }
+        if (!$(ev.target).closest(".load-box").length) {
+          html.find(".load-box").removeClass("open");
+          this.load_open = false;
+        }
+      });
 
-    html.find(".coins-box").click(async (ev) => {
-      if (!$(ev.target).closest(".coins-box .full-view").length) {
-        html.find(".coins-box").toggleClass("open");
-        this.coins_open = !this.coins_open;
-      }
-    });
+      html.find(".coins-box").click(async (ev) => {
+        if (!$(ev.target).closest(".coins-box .full-view").length) {
+          html.find(".coins-box").toggleClass("open");
+          this.coins_open = !this.coins_open;
+        }
+      });
 
-    html.find(".harm-box").click((ev) => {
-      if (!$(ev.target).closest(".harm-box .full-view").length) {
-        html.find(".harm-box").toggleClass("open");
-        this.harm_open = !this.harm_open;
-      }
-    });
+      html.find(".harm-box").click((ev) => {
+        if (!$(ev.target).closest(".harm-box .full-view").length) {
+          html.find(".harm-box").toggleClass("open");
+          this.harm_open = !this.harm_open;
+        }
+      });
 
-    html.find(".load-box").click((ev) => {
-      if (!$(ev.target).closest(".load-box .full-view").length) {
-        html.find(".load-box").toggleClass("open");
-        this.load_open = !this.load_open;
-      }
-    });
+      html.find(".load-box").click((ev) => {
+        if (!$(ev.target).closest(".load-box .full-view").length) {
+          html.find(".load-box").toggleClass("open");
+          this.load_open = !this.load_open;
+        }
+      });
+    }
 
     html.find(".add_trauma").click(async (ev) => {
       // let data = await this.getData();

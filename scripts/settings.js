@@ -39,4 +39,17 @@ export const registerSystemSettings = function () {
       },
     }
   );
+
+  game.settings.register(
+    "bitd-alternate-sheets",
+    "inlineStatusPanels",
+    {
+      name: "Show Harm/Coin/Load Inline",
+      hint: "Display harm, coin, and load controls directly on the sheet instead of popup buttons.",
+      scope: "client",
+      config: true,
+      type: Boolean,
+      default: false
+    }
+  );
 };

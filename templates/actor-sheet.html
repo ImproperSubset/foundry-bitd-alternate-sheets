@@ -6,6 +6,7 @@
         <div class="portrait">
           <img src="{{actor.img}}" data-edit="img" title="{{actor.name}}" >
         </div>
+        {{#unless inlineStatusPanels}}
         <div class="status-buttons">
           <div class="coins-box {{#if coins_open}}open{{/if}} pointer">
             <div class="mini-view"><div class="placeholder"></div><span class="coin-values label-text">{{system.coins}}/{{system.coins_stashed}}</span></div>
@@ -21,7 +22,9 @@
             <div class="full-view">{{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}</div>
           </div>
 
-        </div><div class="stress-trauma-box">
+        </div>
+        {{/unless}}
+        <div class="stress-trauma-box">
           <header class="stress-bar full-bar">
             {{localize system.stress.name}}
             <div class="stripe-tooth-body stress">
@@ -49,6 +52,15 @@
               </div>
             </div>
         </div>
+        {{#if inlineStatusPanels}}
+        <div class="status-inline">
+          <div class="status-inline-row">
+            <section class="inline-panel inline-harm">{{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}</section>
+            <section class="inline-panel inline-coin">{{> "modules/bitd-alternate-sheets/templates/parts/coins.html" actor=actor}}</section>
+            <section class="inline-panel inline-load">{{> "modules/bitd-alternate-sheets/templates/parts/load.html"}}</section>
+          </div>
+        </div>
+        {{/if}}
       </section>
       <section class="character-info col">
 
