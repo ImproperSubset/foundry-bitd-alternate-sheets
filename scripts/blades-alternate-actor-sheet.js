@@ -611,15 +611,10 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     if (rawSerialized !== cleanedSerialized) {
       const cleanedKeys = Object.keys(cleanedProgress);
-      if (cleanedKeys.length > 0) {
-        await this.actor.setFlag(
-          MODULE_ID,
-          "abilityProgress",
-          cleanedProgress
-        );
-      } else {
-        await this.actor.unsetFlag(MODULE_ID, "abilityProgress");
-      }
+      const updateValue = cleanedKeys.length > 0 ? cleanedProgress : null;
+      await this.actor.update({
+        [`flags.${MODULE_ID}.abilityProgress`]: updateValue,
+      });
     }
 
     all_generic_items = await Utils.getVirtualListOfItems(
@@ -1143,15 +1138,11 @@ export class BladesAlternateActorSheet extends BladesSheet {
         }
 
         const progressKeys = Object.keys(progressMap);
-        if (progressKeys.length > 0) {
-          await this.actor.setFlag(
-            MODULE_ID,
-            "abilityProgress",
-            progressMap
-          );
-        } else {
-          await this.actor.unsetFlag(MODULE_ID, "abilityProgress");
-        }
+        const progressUpdate =
+          progressKeys.length > 0 ? progressMap : null;
+        await this.actor.update({
+          [`flags.${MODULE_ID}.abilityProgress`]: progressUpdate,
+        });
 
         if (nextOwnsAbility !== ownsAbility) {
           await this.render(false);
