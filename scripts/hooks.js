@@ -3,6 +3,27 @@ import { registerDiceSoNiceChanges } from "./dice-so-nice.js";
 import { Patch } from "./patches.js";
 import { Utils } from "./utils.js";
 
+function getCrewMembers(crewId) {
+  if (!crewId) return [];
+  const candidates = game.actors
+    ?.filter((a) => a.type === "character" && Array.isArray(a.system?.crew))
+    ?.filter((actor) => actor.system.crew.some((entry) => entry.id === crewId));
+  return candidates ?? [];
+}
+
+function rerenderAlternateActorSheets(actor) {
+  if (!actor) return;
+  const targets =
+    actor.type === "crew" ? getCrewMembers(actor.id) : actor.type === "character" ? [actor] : [];
+  for (const target of targets) {
+    for (const app of Object.values(target.apps ?? {})) {
+      if (app instanceof BladesAlternateActorSheet) {
+        app.render(false);
+      }
+    }
+  }
+}
+
 export async function registerHooks() {
   // Hooks.once('ready', () => {
   // if(!game.modules.get('lib-wrapper')?.active && game.user.isGM)
@@ -79,9 +100,20 @@ export async function registerHooks() {
       "sheetClass" in updateData?.flags?.core
     ) {
     }
-    if (actor._sheet instanceof BladesAlternateActorSheet) {
-    }
+    rerenderAlternateActorSheets(actor);
   });
+
+  for (const hookName of [
+    "createActiveEffect",
+    "updateActiveEffect",
+    "deleteActiveEffect",
+  ]) {
+    Hooks.on(hookName, (effect, ...rest) => {
+      const parent = effect?.parent;
+      if (!parent || parent.documentName !== "Actor") return;
+      rerenderAlternateActorSheets(parent);
+    });
+  }
 
   Hooks.on("createActor", async (actor) => {
     if (actor._sheet instanceof BladesAlternateActorSheet) {
