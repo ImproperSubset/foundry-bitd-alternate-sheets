@@ -2005,20 +2005,23 @@
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
+  width: 100%;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins .hand,
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins .stash {
-  display: inline-block;
-  text-align: left;
+  width: 48%;
+  background-color: #888888;
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins input {
   display: none;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins label {
-  height: 15px;
-  width: 15px;
+  height: 14px;
+  width: 14px;
   background-color: #daa520;
   border: 1px solid #0b0d0c;
   transition: filter 0.1s;
@@ -2030,27 +2033,20 @@
   margin-right: 0px;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins label:hover {
-  filter: brightness(0.8);
+  filter: brightness(0.85);
   opacity: 0.9;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins input:checked ~ label {
-  background-color: #eeefff;
+  background-color: #f5de8f;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins input:checked + label {
   background-color: #daa520;
 }
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.load-panel {
+  display: none;
+}
 .blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.load-panel .load-selection {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.load-panel .load-selection h3 {
-  margin: 0;
-  font-family: Kirsty, serif;
-}
-.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.load-panel .load-selection select {
-  flex: 1 1 auto;
+  display: none;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .stress-trauma-box {
   width: 100%;

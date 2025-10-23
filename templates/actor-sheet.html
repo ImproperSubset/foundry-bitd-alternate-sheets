@@ -79,9 +79,6 @@
       <div class="status-panel coin-panel">
         {{> "modules/bitd-alternate-sheets/templates/parts/coins.html" actor=actor}}
       </div>
-      <div class="status-panel load-panel">
-        {{> "modules/bitd-alternate-sheets/templates/parts/load.html"}}
-      </div>
     </section>
     {{/if}}
     <section class="tab-space">
@@ -161,6 +158,9 @@
                   {{> "modules/bitd-alternate-sheets/templates/parts/item.html" actor=actor item=item}}
                 {{/with}}
               {{/each}}
+            </section>
+            <section class="load-inline">
+              {{> "modules/bitd-alternate-sheets/templates/parts/load.html"}}
             </section>
             <section class="xp-notes">
               <header class="full-bar">XP</header>
