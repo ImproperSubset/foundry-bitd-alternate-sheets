@@ -51,16 +51,6 @@
                 <i class="fas fa-plus add_trauma pointer"></i>
               </div>
             </div>
-        </div>
-        {{#if inlineStatusPanels}}
-        <div class="status-inline">
-          <div class="status-inline-row">
-            <section class="inline-panel inline-harm">{{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}</section>
-            <section class="inline-panel inline-coin">{{> "modules/bitd-alternate-sheets/templates/parts/coins.html" actor=actor}}</section>
-            <section class="inline-panel inline-load">{{> "modules/bitd-alternate-sheets/templates/parts/load.html"}}</section>
-          </div>
-        </div>
-        {{/if}}
       </section>
       <section class="character-info col">
 
@@ -81,6 +71,19 @@
       {{> "modules/bitd-alternate-sheets/templates/parts/attributes.html" owner=this.actor}}
       </section>
     </section>
+    {{#if inlineStatusPanels}}
+    <section class="status-inline">
+      <div class="status-panel harm-panel">
+        {{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}
+      </div>
+      <div class="status-panel coin-panel">
+        {{> "modules/bitd-alternate-sheets/templates/parts/coins.html" actor=actor}}
+      </div>
+      <div class="status-panel load-panel">
+        {{> "modules/bitd-alternate-sheets/templates/parts/load.html"}}
+      </div>
+    </section>
+    {{/if}}
     <section class="tab-space">
       <nav class="tabs" data-group="primary-tabs">
         <div class="tab-item playbook" data-tab="playbook">

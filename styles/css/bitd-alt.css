@@ -1854,28 +1854,203 @@
 .blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .status-buttons .load-box .over-max {
   color: #660000;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .status-inline {
-  margin-top: 15px;
-}
-.blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .status-inline .status-inline-row {
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
-}
-.blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .status-inline .status-inline-row .inline-panel {
-  flex: 1 1 260px;
-  background-color: rgba(224, 222, 210, 0.8);
-  border-radius: 20px;
-  padding: 15px;
+  gap: 20px;
+  width: calc(100% - 40px);
+  margin: 10px auto 25px;
+  padding: 0 20px;
   box-sizing: border-box;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .status-inline .status-inline-row .inline-panel .character-harm {
-  background: transparent;
-  border-radius: 0;
-  padding: 0;
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel {
+  flex: 1 1 280px;
+  background-color: rgba(224, 222, 210, 0.85);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .status-inline .status-inline-row .inline-panel .load-selection {
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm {
+  display: grid;
+  grid-template-columns: 1em repeat(6, 1fr);
+  grid-template-rows: repeat(5, 1.6em);
+  grid-column-gap: 1px;
+  grid-row-gap: 1px;
+  place-items: center;
+  grid-template-areas: "empty header-harm header-harm header-harm header-harm header-effect header-healing""rownum3 heavy heavy heavy heavy heavy-effect healing""rownum2 medium1 medium1 medium2 medium2 medium-effect healing""rownum1 light1 light1 light2 light2 light-effect healing""armor armor armor armor armor armor armor";
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm input[type=text] {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+  background-color: #9f9f9f;
+  z-index: 10;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm header {
+  width: calc(100% + 5px);
+  background-color: #0b0d0c;
+  color: #f5f5f5;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm header.harm {
+  grid-area: header-harm;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm header.effect {
+  grid-area: header-effect;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm header.healing {
+  grid-area: header-healing;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .rownum3 {
+  grid-area: rownum3;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .heavy {
+  grid-area: heavy;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .effect-text.heavy {
+  grid-area: heavy-effect;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .rownum2 {
+  grid-area: rownum2;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .medium1 {
+  grid-area: medium1;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .medium2 {
+  grid-area: medium2;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .effect-text.medium {
+  grid-area: medium-effect;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .light1 {
+  grid-area: light1;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .light2 {
+  grid-area: light2;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .effect-text.light {
+  grid-area: light-effect;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock {
+  grid-area: healing;
+  padding-top: 25px;
+  position: relative;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock {
+  position: relative;
+  padding: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  list-style: none;
+  overflow: hidden;
+  background-size: cover;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock label {
+  overflow: hidden;
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0% 100%;
+  transition: filter 0.1s;
+  cursor: pointer;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock label:hover {
+  filter: brightness(0.8);
+  opacity: 0.9;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock input {
+  position: absolute;
+  display: none;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock input[value="0"] {
+  display: none;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock *:nth-child(3) {
+  transform: rotate(0deg) skewY(180deg);
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock *:nth-child(5) {
+  transform: rotate(90deg) skewY(180deg);
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock *:nth-child(7) {
+  transform: rotate(180deg) skewY(180deg);
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock .blades-clock *:nth-child(9) {
+  transform: rotate(270deg) skewY(180deg);
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .healing-clock label i.nullifier {
+  position: absolute;
+  top: 15px;
+  right: 0px;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .rownum1 {
+  grid-area: rownum1;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .armor-use {
+  grid-area: armor;
+  text-align: right;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .effect-text {
+  font-family: "Crimson Text", serif;
+  font-size: 0.9rem;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.harm-panel .character-harm .grid-lines {
+  background-color: #0b0d0c;
+  grid-area: 2/2/5/6;
+  width: 100%;
+  height: calc(100% - 1px);
+  z-index: 1;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins .hand,
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins .stash {
+  display: inline-block;
+  text-align: left;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins input {
+  display: none;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins label {
+  height: 15px;
+  width: 15px;
+  background-color: #daa520;
+  border: 1px solid #0b0d0c;
+  transition: filter 0.1s;
+  cursor: pointer;
+  margin-right: 3px;
+  margin-bottom: 3px;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins label[for$="-0"] {
+  margin-right: 0px;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins label:hover {
+  filter: brightness(0.8);
+  opacity: 0.9;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins input:checked ~ label {
+  background-color: #eeefff;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.coin-panel .coins input:checked + label {
+  background-color: #daa520;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.load-panel .load-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.load-panel .load-selection h3 {
   margin: 0;
+  font-family: Kirsty, serif;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .status-inline .status-panel.load-panel .load-selection select {
+  flex: 1 1 auto;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .minimized-view .character-portrait .stress-trauma-box {
   width: 100%;
