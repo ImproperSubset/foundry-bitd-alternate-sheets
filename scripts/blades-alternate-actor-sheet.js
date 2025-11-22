@@ -18,6 +18,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
   load_open = false;
   allow_edit = false;
   show_debug = false;
+  _removeDocClick = null;
 
   /** @override */
   static get defaultOptions() {
@@ -52,6 +53,14 @@ export class BladesAlternateActorSheet extends BladesSheet {
   setLocalProp(propName, value) {
     this[propName] = value;
     this.render(false);
+  }
+
+  async close(options) {
+    if (this._removeDocClick) {
+      this._removeDocClick();
+      this._removeDocClick = null;
+    }
+    return super.close(options);
   }
 
   /** @override **/
@@ -957,6 +966,21 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     this.addTermTooltips(html);
 
+    const closePanels = (except) => {
+      if (except !== "coins") {
+        html.find(".coins-box").removeClass("open");
+        this.coins_open = false;
+      }
+      if (except !== "harm") {
+        html.find(".harm-box").removeClass("open");
+        this.harm_open = false;
+      }
+      if (except !== "load") {
+        html.find(".load-box").removeClass("open");
+        this.load_open = false;
+      }
+    };
+
     // Everything below here is only needed if the sheet is editable
     if (!this.options.editable) return;
 
@@ -1227,40 +1251,40 @@ export class BladesAlternateActorSheet extends BladesSheet {
       this.actor.update({ system: { acquaintances: acquaintances } });
     });
 
-    $(document).click((ev) => {
-      let render = false;
-      if (!$(ev.target).closest(".coins-box").length) {
-        html.find(".coins-box").removeClass("open");
-        this.coins_open = false;
+    const ownerDocument = html[0]?.ownerDocument || document;
+    const onDocClick = (ev) => {
+      if (!html[0]?.contains?.(ev.target)) {
+        closePanels();
       }
-      if (!$(ev.target).closest(".harm-box").length) {
-        html.find(".harm-box").removeClass("open");
-        this.harm_open = false;
-      }
-      if (!$(ev.target).closest(".load-box").length) {
-        html.find(".load-box").removeClass("open");
-        this.load_open = false;
-      }
-    });
+    };
+    ownerDocument.addEventListener("click", onDocClick, true);
+    this._removeDocClick = () =>
+      ownerDocument.removeEventListener("click", onDocClick, true);
 
     html.find(".coins-box").click(async (ev) => {
       if (!$(ev.target).closest(".coins-box .full-view").length) {
-        html.find(".coins-box").toggleClass("open");
-        this.coins_open = !this.coins_open;
+        const willOpen = !this.coins_open;
+        closePanels("coins");
+        html.find(".coins-box").toggleClass("open", willOpen);
+        this.coins_open = willOpen;
       }
     });
 
     html.find(".harm-box").click((ev) => {
       if (!$(ev.target).closest(".harm-box .full-view").length) {
-        html.find(".harm-box").toggleClass("open");
-        this.harm_open = !this.harm_open;
+        const willOpen = !this.harm_open;
+        closePanels("harm");
+        html.find(".harm-box").toggleClass("open", willOpen);
+        this.harm_open = willOpen;
       }
     });
 
     html.find(".load-box").click((ev) => {
       if (!$(ev.target).closest(".load-box .full-view").length) {
-        html.find(".load-box").toggleClass("open");
-        this.load_open = !this.load_open;
+        const willOpen = !this.load_open;
+        closePanels("load");
+        html.find(".load-box").toggleClass("open", willOpen);
+        this.load_open = willOpen;
       }
     });
 
