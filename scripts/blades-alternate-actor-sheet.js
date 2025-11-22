@@ -18,7 +18,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
   load_open = false;
   allow_edit = false;
   show_debug = false;
-  _removeDocClick = null;
 
   /** @override */
   static get defaultOptions() {
@@ -53,14 +52,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
   setLocalProp(propName, value) {
     this[propName] = value;
     this.render(false);
-  }
-
-  async close(options) {
-    if (this._removeDocClick) {
-      this._removeDocClick();
-      this._removeDocClick = null;
-    }
-    return super.close(options);
   }
 
   /** @override **/
@@ -980,6 +971,13 @@ export class BladesAlternateActorSheet extends BladesSheet {
         this.load_open = false;
       }
     };
+
+    // Close panels when clicking elsewhere inside the sheet
+    html.on("click", (ev) => {
+      if (!$(ev.target).closest(".coins-box, .harm-box, .load-box").length) {
+        closePanels();
+      }
+    });
 
     // Everything below here is only needed if the sheet is editable
     if (!this.options.editable) return;
