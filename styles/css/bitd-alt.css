@@ -2214,6 +2214,110 @@
   position: relative;
   z-index: 0;
 }
+
+/* Crew sheet ability/upgrade checklist styling */
+.blades-alt.actor.sheet.crew .ability-list .ability-block {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  padding: 5px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.blades-alt.actor.sheet.crew .ability-list .ability-block:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.3); /* lighten alternating rows */
+}
+.blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes {
+  display: flex;
+  gap: 0.35em;
+  margin-right: 0.5em;
+  padding-top: 0.2em;
+}
+.blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes .ability-checkbox {
+  margin: 0;
+  position: relative;
+}
+.blades-alt.actor.sheet.crew .ability-list label {
+  margin: 0;
+  line-height: 0.8em;
+  font-size: 1.2em;
+  margin-bottom: 6px;
+  padding-right: 1em;
+}
+.blades-alt.actor.sheet.crew .ability-list label .ability-name {
+  font-weight: bold;
+  font-variant: small-caps;
+}
+.blades-alt.actor.sheet.crew .ability-list label .ability-description p {
+  display: inline;
+}
+
+/* Crew sheet tab styling (rounded, grey) to match alt sheet vibe */
+.blades-alt.actor.sheet.crew .sheet-wrapper {
+  border-radius: 12px;
+  padding: 8px;
+}
+.blades-alt.actor.sheet.crew nav.tabs {
+  display: flex;
+  gap: 0.5em;
+  padding: 0;
+  margin-top: 0.5em;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+}
+.blades-alt.actor.sheet.crew nav.tabs .item {
+  background-color: rgba(187, 187, 187, 0.5); /* light alt grey */
+  border: 1px solid #888;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  font-family: Kirsty, serif;
+  text-transform: capitalize;
+  padding: 4px 8px;
+  font-size: 1.2em;
+  color: #000;
+}
+.blades-alt.actor.sheet.crew nav.tabs .item.active {
+  background-color: #bbb; /* darker alt grey */
+  color: #000;
+}
+.blades-alt.actor.sheet.crew .tab-content {
+  background: #bbb; /* darker alt grey */
+  border: 1px solid #888;
+  border-radius: 0 0 12px 12px;
+  padding: 0 0 8px 0; /* remove side padding so lists align to tabs */
+  margin-top: -1px;
+  margin-left: 0;
+}
+.blades-alt.actor.sheet.crew .tab-content .tab {
+  margin: 0;
+  padding: 0;
+}
+.blades-alt.actor.sheet.crew .ability-list.check-list {
+  background: #bbb; /* match alt abilities section */
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.blades-alt.actor.sheet.crew .ability-list {
+  margin: 0;
+  width: 100%;
+}
+.blades-alt.actor.sheet.crew .contacts-actions,
+.blades-alt.actor.sheet.crew .add-item-row {
+  margin-bottom: 0.5em;
+}
+.blades-alt.actor.sheet.crew .tab .item {
+  background-color: #bbb;
+}
+.blades-alt.actor.sheet.crew .tab .item:nth-of-type(even) {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+.blades-alt.actor.sheet.crew .tab > * {
+  margin-left: 0;
+  margin-right: 0;
+}
 .blades-alt.actor.sheet.pc .sheet-wrapper .tab-space .tab-content .tab .playbook .item-list .item-block input {
   margin-left: 0;
   position: relative;
