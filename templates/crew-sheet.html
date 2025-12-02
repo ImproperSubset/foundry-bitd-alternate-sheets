@@ -267,7 +267,7 @@
       {{#each items as |item id|}}
       {{#if (eq item.type "crew_type")}}
       <div class="item" data-item-id="{{item._id}}">
-        {{> "systems/blades-in-the-dark/templates/parts/turf-list.html" _id=../_id turfs_data=item.system.turfs can_edit=false not_prison=true}}
+        {{> "modules/bitd-alternate-sheets/templates/parts/turf-list.html" _id=../_id turfs_data=item.system.turfs can_edit=false not_prison=true}}
       </div>
       {{/if}}
       {{/each}}
@@ -338,7 +338,7 @@
       {{#each items as |item id|}}
       {{#if (eq item.type "prison")}}
       <div class="item" data-item-id="{{item._id}}">
-        {{> "systems/blades-in-the-dark/templates/parts/turf-list.html" _id=../_id turfs_data=item.system.turfs can_edit=false not_prison=false}}
+        {{> "modules/bitd-alternate-sheets/templates/parts/turf-list.html" _id=../_id turfs_data=item.system.turfs can_edit=false not_prison=false}}
       </div>
       {{/if}}
       {{/each}}

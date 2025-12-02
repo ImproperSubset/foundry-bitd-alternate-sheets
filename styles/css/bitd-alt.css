@@ -2153,9 +2153,19 @@
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .tab-space .tab-content .tab .playbook .abilities .ability-list .ability-block .ability-checkboxes {
   display: flex;
-  gap: 0.35em;
+  gap: 0;
   margin-right: 0.5em;
-  padding-top: 0.2em;
+  padding-top: 0;
+}
+.blades-alt.actor.sheet.pc .sheet-wrapper .tab-space .tab-content .tab .playbook .abilities .ability-list .ability-block .ability-checkboxes .join-line,
+.blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes .join-line {
+  border: 1px solid #666;
+  width: 0.75em;
+  display: inline-block;
+  height: 0;
+  margin: 0 -0.15em;
+  position: relative;
+  top: 0.5em;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper .tab-space .tab-content .tab .playbook .abilities .ability-list .ability-block .ability-checkboxes .ability-checkbox {
   margin: 0;
@@ -2229,13 +2239,17 @@
 }
 .blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes {
   display: flex;
-  gap: 0.35em;
+  gap: 0;
   margin-right: 0.5em;
-  padding-top: 0.2em;
+  padding-top: 0;
 }
-.blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes .ability-checkbox {
+.blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes .ability-checkbox,
+.blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes .crew-upgrade-checkbox,
+.blades-alt.actor.sheet.crew .ability-list .ability-block .ability-checkboxes .crew-ability-checkbox {
   margin: 0;
   position: relative;
+  width: 1em;
+  height: 1em;
 }
 .blades-alt.actor.sheet.crew .ability-list label {
   margin: 0;
@@ -2250,6 +2264,18 @@
 }
 .blades-alt.actor.sheet.crew .ability-list label .ability-description p {
   display: inline;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Crew sheet tab styling (rounded, grey) to match alt sheet vibe */
@@ -2596,3 +2622,46 @@
 }
 
 /*# sourceMappingURL=bitd-alt.css.map */
+/* Claims / turf styling overrides */
+.blades-alt .turf-list {
+  --turf-bg: #d8d8d8;
+  --turf-bg-selected: #999;
+  --turf-checkbox-size: 1em;
+}
+.blades-alt .turf-list .turf-block {
+  background-color: var(--turf-bg);
+}
+.blades-alt .turf-list .turf-block.turf-selected {
+  background-color: var(--turf-bg-selected);
+}
+.blades-alt .turf-list .turf-block .connector {
+  background-color: var(--turf-bg);
+}
+.blades-alt .turf-list .turf-block.turf-selected .connector {
+  background-color: var(--turf-bg-selected);
+}
+.blades-alt .turf-list .turf-block .turf-control {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--turf-checkbox-size);
+  height: var(--turf-checkbox-size);
+  padding: 0;
+  margin: 0;
+  z-index: 2;
+}
+.blades-alt .turf-list .turf-block .turf-control input.turf-select[type=checkbox] {
+  width: var(--turf-checkbox-size);
+  height: var(--turf-checkbox-size);
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
+/* Rep track: only enforce disabled (turf discount) color; otherwise use system styling */
+.blades-alt.actor.sheet.crew .crew-reputation input[disabled] + label.radio-toggle {
+  background-image: url("systems/blades-in-the-dark/styles/assets/teeth/stresstooth-black.png");
+}
