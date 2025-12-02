@@ -430,6 +430,31 @@ export class Utils {
     });
   }
 
+  /**
+   * Ensure a sheet has a local allow_edit flag initialized.
+   * Defaults to the sheet's editable option if unset.
+   * @param {DocumentSheet} sheet
+   */
+  static ensureAllowEdit(sheet) {
+    if (typeof sheet.allow_edit === "undefined") {
+      sheet.allow_edit = Boolean(sheet.options?.editable ?? true);
+    }
+    return sheet.allow_edit;
+  }
+
+  /**
+   * Wire up the lock/unlock toggle to flip allow_edit and rerender.
+   * @param {DocumentSheet} sheet
+   * @param {JQuery} html
+   */
+  static bindAllowEditToggle(sheet, html) {
+    html.find(".toggle-allow-edit").off("click").on("click", (event) => {
+      event.preventDefault();
+      sheet.allow_edit = !sheet.allow_edit;
+      sheet.render(false);
+    });
+  }
+
   static async toggleOwnership(state, actor, type, id) {
     if (type == "ability") {
       if (state) {

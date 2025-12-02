@@ -1,5 +1,11 @@
 <form class="{{cssClass}} actor-sheet blades-alt" autocomplete="off">
-  <div class="sheet-wrapper">
+  <div class="sheet-wrapper {{#if allow_edit}}allow-edit{{/if}}">
+
+  <div class="sheet-toggles">
+    <span class="toggle-allow-edit" data-tooltip="{{localize 'bitd-alt.AllowEdit'}}">
+      <i class="fas fa-lock"></i><i class="fas fa-lock-open"></i>
+    </span>
+  </div>
 
   <section class="flex-horizontal">
 

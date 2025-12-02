@@ -1107,7 +1107,8 @@
   min-width: 800px;
   min-height: 275px;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper {
+.blades-alt.actor.sheet.pc .sheet-wrapper,
+.blades-alt.actor.sheet.crew .sheet-wrapper {
   position: relative;
   margin: 5px;
   font-family: "Crimson Text", serif;
@@ -1332,12 +1333,14 @@
 .blades-alt.actor.sheet.pc .sheet-wrapper header.full-bar .stripe-tooth-body.stress label.on {
   background-image: url("assets/teeth/xptooth-red.png");
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles {
+.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles,
+.blades-alt.actor.sheet.crew .sheet-wrapper .sheet-toggles {
   position: absolute;
-  top: -10px;
-  right: -10px;
+  top: 4px;
+  right: 4px;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles > span {
+.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles > span,
+.blades-alt.actor.sheet.crew .sheet-wrapper .sheet-toggles > span {
   display: inline-block;
   padding: 4px;
   margin: 0 5px;
@@ -1361,30 +1364,37 @@
   display: none !important;
 }
 
-.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit {
+.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit,
+.blades-alt.actor.sheet.crew .sheet-wrapper .sheet-toggles span.toggle-allow-edit {
   cursor: pointer;
   background: #008000;
   color: rgba(255, 255, 255, 0.6);
   border-radius: 3px;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit:hover {
+.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit:hover,
+.blades-alt.actor.sheet.crew .sheet-wrapper .sheet-toggles span.toggle-allow-edit:hover {
   color: #fff;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit i {
+.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit i,
+.blades-alt.actor.sheet.crew .sheet-wrapper .sheet-toggles span.toggle-allow-edit i {
   width: 100%;
   text-align: center;
   padding: 4px 6px;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit .fa-lock-open {
+.blades-alt.actor.sheet.pc .sheet-wrapper .sheet-toggles span.toggle-allow-edit .fa-lock-open,
+.blades-alt.actor.sheet.crew .sheet-wrapper .sheet-toggles span.toggle-allow-edit .fa-lock-open {
   display: none;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit {
+.blades-alt.actor.sheet.pc .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit,
+.blades-alt.actor.sheet.crew .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit {
   background-color: #800000;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit .fa-lock-open {
+.blades-alt.actor.sheet.pc .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit .fa-lock-open,
+.blades-alt.actor.sheet.crew .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit .fa-lock-open {
   display: inline-block;
 }
-.blades-alt.actor.sheet.pc .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit .fa-lock {
+.blades-alt.actor.sheet.pc .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit .fa-lock,
+.blades-alt.actor.sheet.crew .sheet-wrapper.allow-edit .sheet-toggles .toggle-allow-edit .fa-lock {
   display: none;
 }
 .blades-alt.actor.sheet.pc .sheet-wrapper span.toggle-alias-display {

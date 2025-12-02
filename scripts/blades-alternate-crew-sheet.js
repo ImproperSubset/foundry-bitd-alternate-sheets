@@ -24,11 +24,12 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
   /** @override */
   async getData(options) {
     const sheetData = await super.getData(options);
+    Utils.ensureAllowEdit(this);
     // The system sheet returns a data object; mirror actor/system for template parity.
     sheetData.actor = sheetData.data ?? sheetData.actor ?? this.actor;
     sheetData.system = sheetData.system ?? this.actor.system;
     sheetData.editable = this.options.editable;
-    sheetData.allow_edit = this.options.editable;
+    sheetData.allow_edit = this.allow_edit;
 
     // Cache selected crew type (if present) to contextualize ability/upgrade lists.
     const crewTypeItem = this.actor.items.find((item) => item.type === "crew_type");
@@ -210,6 +211,7 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
 
     // Clock embeds in notes (shared with character sheet)
     Utils.bindClockControls(html, this.render.bind(this));
+    Utils.bindAllowEditToggle(this, html);
   }
 
   async _onChoiceToggle(event, type) {

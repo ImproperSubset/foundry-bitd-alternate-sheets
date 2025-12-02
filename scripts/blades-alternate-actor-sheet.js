@@ -16,7 +16,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
   coins_open = false;
   harm_open = false;
   load_open = false;
-  allow_edit = false;
+  allow_edit = undefined;
   show_debug = false;
 
   /** @override */
@@ -417,6 +417,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
   /** @override */
   async getData() {
     let sheetData = await super.getData();
+    Utils.ensureAllowEdit(this);
     sheetData.editable = this.options.editable;
     sheetData.isGM = game.user.isGM;
     sheetData.showAliasInDirectory = this.actor.getFlag(
@@ -1035,10 +1036,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
       element.slideUp(200, () => this.render(false));
     });
 
-    html.find(".toggle-allow-edit").click(async (event) => {
-      event.preventDefault();
-      this.setLocalProp("allow_edit", !this.allow_edit);
-    });
+    Utils.bindAllowEditToggle(this, html);
 
     html.find(".toggle-alias-display").click(async (event) => {
       event.preventDefault();
