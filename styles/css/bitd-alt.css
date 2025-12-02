@@ -2320,6 +2320,7 @@
   padding: 4px 8px;
   font-size: 1.2em;
   color: #000;
+  white-space: nowrap;
 }
 .blades-alt.actor.sheet.crew nav.tabs .item.active {
   background-color: #bbb; /* darker alt grey */
