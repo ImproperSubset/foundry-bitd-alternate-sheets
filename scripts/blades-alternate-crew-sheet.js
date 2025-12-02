@@ -1,5 +1,5 @@
 import { BladesCrewSheet as SystemCrewSheet } from "../../../systems/blades-in-the-dark/module/blades-crew-sheet.js";
-import { Utils } from "./utils.js";
+import { Utils, MODULE_ID } from "./utils.js";
 
 /**
  * Alternate crew sheet that mirrors the functionality of the system sheet
@@ -44,6 +44,10 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
       crewTypeName
     );
 
+    // Notes content (parity with alternate character sheet)
+    const rawNotes = (await this.actor.getFlag(MODULE_ID, "notes")) || "";
+    sheetData.notes = await Utils.enrichNotes(this.actor, rawNotes);
+
     return sheetData;
   }
 
@@ -62,7 +66,7 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
     if (type !== "crew_upgrade") {
       this._virtualUpgradeSources.clear();
     }
-    // Manual fixes for missing crew metadata in system packs.
+    // Manual fixes for missing crew metadata in system packs (e.g., Ritual Sanctum lacks crew type).
     const resolveManualCrewType = (normalizedName) => {
       if (!normalizedName) return null;
       if (normalizedName.includes("ritual sanctum")) return normalizeKey("Cult");
@@ -115,7 +119,7 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
         return true;
       });
 
-      // Inject explicit 2-cost cohort upgrades to replace multiple cohort variants.
+      // Inject explicit 2-cost cohort upgrades to replace multiple cohort variants from the system packs.
       this._virtualUpgradeSources.clear();
       const makeVirtual = (id, name, description) => {
         const system = {
@@ -203,6 +207,9 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
       ]);
       this.render(false);
     });
+
+    // Clock embeds in notes (shared with character sheet)
+    Utils.bindClockControls(html, this.render.bind(this));
   }
 
   async _onChoiceToggle(event, type) {

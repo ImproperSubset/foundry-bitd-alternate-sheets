@@ -461,22 +461,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
         : sheetData.system.acquaintances_label;
     let rawNotes = this.actor.getFlag("bitd-alternate-sheets", "notes");
     if (rawNotes) {
-      let pattern = /(@UUID\[([^]*?)]){[^}]*?}/gm;
-      let linkedEntities = [...rawNotes.matchAll(pattern)];
-      for (let index = 0; index < linkedEntities.length; index++) {
-        const entity = await fromUuid(linkedEntities[index][2]);
-        if (entity?.type === "🕛 clock") {
-        }
-      }
-      let clockNotes = await enrichHTML(rawNotes, {
-        documents: false,
-        async: true,
-      });
-      sheetData.notes = await enrichHTML(clockNotes, {
-        relativeTo: this.document,
-        secrets: this.document.isOwner,
-        async: true,
-      });
+      sheetData.notes = await Utils.enrichNotes(this.actor, rawNotes);
     }
 
     // Prepare active effects
@@ -982,24 +967,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
       await this.clearLoad();
     });
     html.find("img.clockImage").on("click", async (e) => {
-      let entity = await fromUuid(e.currentTarget.dataset.uuid);
-      let currentValue = entity.system.value;
-      let currentMax = entity.system.type;
-      if (currentValue < currentMax) {
-        currentValue++;
-        await entity.update({ system: { value: currentValue } });
-        this.render();
-      }
-    });
-    html.find("img.clockImage").on("contextmenu", async (e) => {
-      let entity = await fromUuid(e.currentTarget.dataset.uuid);
-      let currentValue = entity.system.value;
-      let currentMax = entity.system.type;
-      if (currentValue > 0) {
-        currentValue = currentValue - 1;
-        await entity.update({ system: { value: currentValue } });
-        this.render();
-      }
+      Utils.bindClockControls(html, this.render.bind(this));
     });
     html
       .find("input.radio-toggle, label.radio-toggle")

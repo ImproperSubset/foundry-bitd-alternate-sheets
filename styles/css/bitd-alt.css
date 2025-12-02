@@ -1151,6 +1151,15 @@
   width: 100px;
   border: none;
 }
+.blades-alt.actor.sheet.crew .sheet-wrapper .linkedClock {
+  display: inline-block;
+  text-align: center;
+  margin: 1em;
+}
+.blades-alt.actor.sheet.crew .sheet-wrapper .clockImage {
+  width: 100px;
+  border: none;
+}
 .blades-alt.actor.sheet.pc .sheet-wrapper .editor {
   background-color: rgba(255, 255, 255, 0.2);
   padding: 0.5em;
@@ -2622,7 +2631,7 @@
 }
 
 /*# sourceMappingURL=bitd-alt.css.map */
-/* Claims / turf styling overrides */
+/* Claims / turf styling overrides (keep turf tile colors consistent with alt tabs and position the checkbox) */
 .blades-alt .turf-list {
   --turf-bg: #d8d8d8;
   --turf-bg-selected: #999;

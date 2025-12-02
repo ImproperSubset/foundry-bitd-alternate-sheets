@@ -344,8 +344,9 @@
       {{/each}}
     </div>
 
-    <div id="crew-{{_id}}-notes" class="notes tab grow-two flex-vertical" data-tab="notes">
-      <textarea rows="15" name="system.description">{{{system.description}}}</textarea>
+    <div id="crew-{{_id}}-notes" class="notes tab grow-two flex-vertical character-notes-area" data-tab="notes">
+      <header>{{localize "bitd-alt.NotesInstructions"}}</header>
+      {{editor notes target=(concat "flags." "bitd-alternate-sheets" ".notes") button=true editable=editable documents=true engine="prosemirror" collaborate=true}}
     </div>
 
     {{#if isGM}}
