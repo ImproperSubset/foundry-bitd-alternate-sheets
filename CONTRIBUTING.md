@@ -16,6 +16,11 @@
 - Templates: Handlebars helpers live in `scripts/handlebars-helpers.js`; keep partial names aligned with filenames and avoid inline logic that belongs in helpers.
 - Styles: keep shared tokens/mixins in `styles/scss/mixin.scss`; prefer SCSS variables over hard-coded colors; match existing class naming.
 
+### Ability cost bars (linked vs. independent)
+- The “join-line” bars between multi-box abilities are meant only for gated, single-purchase abilities (you must fill all boxes to unlock the ability).
+- Multi-level abilities (e.g., Veteran) improve per purchase and should **not** show join bars; treat each box as an independent rank.
+- The template currently renders no join bars by default; if you need to reintroduce them for specific abilities, do it via a data-driven flag/helper (e.g., check a property that marks “requires full fill to unlock”) rather than hard-coding ability names.
+
 ## Testing Guidelines
 - No automated suite exists; rely on manual Foundry verification.
 - Smoke test: start the container, enable the module, create a character and class, confirm alternate sheets register by default, roll a skill, toggle edit/mini modes, and verify harm/coin/load dialogs function.
