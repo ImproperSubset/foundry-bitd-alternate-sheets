@@ -1,6 +1,7 @@
 {
     "bitd-alt.hello": "hallo",
     "bitd-alt.items": "Gegenstände",
+    "bitd-alt.specialItems": "Besondere Gegenstände",
     "bitd-alt.AddNewItem": "Neuen Gegenstand hinzufügen",
     "bitd-alt.AddExistingItem": "Bestehenden Gegenstand hinzufügen",
     "bitd-alt.DeleteItem": "Gegenstand löschen",

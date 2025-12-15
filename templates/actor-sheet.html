@@ -179,7 +179,7 @@
             <div class="playbook-right">
               <section class="playbook-items item-list section-block {{#if (lookup collapsedSections 'items')}}collapsed{{/if}}" data-section-key="items">
                 {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-                  label=(localize "bitd-alt.items")
+                  label=(localize "bitd-alt.specialItems")
                   flex=true
                   showFilter=false
                   isFiltered=showFilteredItems
@@ -203,7 +203,7 @@
               </section>
               <section class="all-items item-list section-block {{#if (lookup collapsedSections 'general-items')}}collapsed{{/if}}" data-section-key="general-items">
                 {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-                  label=(localize "bitd-alt.genericItems")
+                  label=(localize "bitd-alt.items")
                   flex=true
                   showFilter=false
                   isFiltered=false

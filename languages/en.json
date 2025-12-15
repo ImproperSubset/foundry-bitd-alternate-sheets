@@ -1,6 +1,7 @@
 {
     "bitd-alt.hello": "hello",
     "bitd-alt.items": "Items",
+    "bitd-alt.specialItems": "Special Items",
     "bitd-alt.AddNewItem": "Add New Item",
     "bitd-alt.AddExistingItem": "Add Existing Item",
     "bitd-alt.DeleteItem": "Delete Item",

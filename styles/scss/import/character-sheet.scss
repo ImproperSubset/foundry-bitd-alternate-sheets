@@ -909,7 +909,7 @@
         .playbook {
           display: flex;
           align-items: flex-start;
-          gap: 0.5em;
+          gap: 0;
 
           &::after {
             display: none;
@@ -926,7 +926,7 @@
             flex-direction: column;
             gap: 0.5em;
             border-left: 1px solid $almost_black;
-            padding-left: 0.5em;
+            padding-left: 0;
           }
 
           .section-block {
