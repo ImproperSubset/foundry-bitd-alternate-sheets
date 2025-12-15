@@ -899,11 +899,74 @@
               }
             }
 
-            header.full-bar {
-              background-color: $darkgray;
-              color: $almost_white;
+          header.full-bar {
+            background-color: $darkgray;
+            color: $almost_white;
+          }
+        }
+
+        /* Override playbook layout to flex-based two-column structure */
+        .playbook {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5em;
+
+          &::after {
+            display: none;
+          }
+
+          .abilities {
+            flex: 1 1 50%;
+            background: $lightgray;
+          }
+
+          .playbook-right {
+            flex: 1 1 50%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5em;
+            border-left: 1px solid $almost_black;
+            padding-left: 0.5em;
+          }
+
+          .section-block {
+            padding-bottom: 0.5em;
+          }
+
+          .item-list {
+            .two-col-list {
+              display: grid;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              column-gap: 0.25em;
+              row-gap: 0;
+
+              .item-block {
+                background: none;
+              }
+
+              .item-block:nth-child(4n + 1),
+              .item-block:nth-child(4n + 2) {
+                background-color: rgba(0, 0, 0, 0.1);
+              }
             }
           }
+
+          .friends-rivals {
+            .section-body {
+              .acquaintance:nth-child(even) {
+                background-color: rgba(0, 0, 0, 0.1);
+              }
+            }
+          }
+
+          .xp-notes {
+            background: $lightgray;
+
+            ul {
+              margin: 0;
+            }
+          }
+        }
 
           &.downtime {
             line-height: 1em;
