@@ -2,6 +2,7 @@
     "bitd-alt.hello": "Ciao",
     "bitd-alt.items": "Oggetti",
     "bitd-alt.specialItems": "Oggetti speciali",
+    "bitd-alt.SpecialItems": "Oggetti speciali",
     "bitd-alt.AddNewItem": "Aggiungi nuovo oggetto",
     "bitd-alt.AddExistingItem": "Aggiungi oggetto esistente",
     "bitd-alt.DeleteItem": "Cancella oggetto",
