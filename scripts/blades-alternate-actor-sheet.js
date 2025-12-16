@@ -1168,7 +1168,10 @@ export class BladesAlternateActorSheet extends BladesSheet {
       root: html[0], // Pass the raw DOM element
       actorUuid: this.actor.uuid,
       namespace: "bitd-alternate-sheets",
-      // Default to "Left: Abilities, Items", "Right: Friends, XP" based on template structure
+      defaultLayout: {
+        left: ["abilities"],
+        right: ["items", "general-items", "acquaintances", "xp-notes"],
+      },
     });
 
     this.addTermTooltips(html);

@@ -34,9 +34,12 @@ export async function initDockableSections(config) {
     const handleSelector = config.handleSelector || ".dock-handle";
     const defaultLayout = config.defaultLayout || { left: [], right: [] };
 
+    // Sanitize UUID for flag storage (Foundry expands dots in keys)
+    const storageKey = actorUuid.replace(/\./g, "_");
+
     // 1. Load Persistence
     const savedMap = (await game.user.getFlag(namespace, FLAG_KEY)) || {};
-    const savedLayout = savedMap[actorUuid] || defaultLayout;
+    const savedLayout = savedMap[storageKey] || defaultLayout;
 
     // 2. Apply Layout (Move DOM Nodes)
     const columns = {};
@@ -48,9 +51,8 @@ export async function initDockableSections(config) {
             const savedOrder = savedLayout[colId] || [];
             // Move known sections
             for (const sectionKey of savedOrder) {
-                const section = root.querySelector(
-                    `${sectionSelector}[${keyAttr}="${sectionKey}"]`
-                );
+                const selector = `${sectionSelector}[${keyAttr}="${sectionKey}"]`;
+                const section = root.querySelector(selector);
                 if (section) {
                     colEl.appendChild(section);
                 }
@@ -87,7 +89,7 @@ export async function initDockableSections(config) {
 
         // Persist
         const currentMap = (await game.user.getFlag(namespace, FLAG_KEY)) || {};
-        currentMap[actorUuid] = newLayout;
+        currentMap[storageKey] = newLayout;
         await game.user.setFlag(namespace, FLAG_KEY, currentMap);
     };
 
@@ -100,6 +102,7 @@ export async function initDockableSections(config) {
             onSort: (evt) => {
                 // Only save if the item was dropped in this list (prevents double save on cross-list move)
                 // or if it was reordered within the same list
+                // console.log("DockableSections | onSort triggered", evt);
                 saveLayout();
             },
         });
