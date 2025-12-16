@@ -1,6 +1,8 @@
 // Set to true while developing to force the legacy V1 dialog even on V2-capable cores.
 // This lets us regression-test the fallback path on v13+ without spinning up an older Foundry build.
 const FORCE_DIALOG_V1 = false;
+const DEFAULT_DIALOG_WIDTH = 720;
+const DEFAULT_DIALOG_HEIGHT = 576;
 
 /**
 /**
@@ -69,7 +71,7 @@ function getCardHtml(choices, currentValue) {
     .join("");
 
   return `
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; margin-bottom: 0.5rem; max-height: 400px; overflow-y: auto; padding: 4px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; margin-bottom: 0.5rem; max-height: 400px; overflow-y: auto; padding: 4px; min-width: 560px;">
       ${cards}
     </div>
   `;
@@ -83,18 +85,20 @@ async function openCardSelectionDialogV2({
   clearLabel,
   choices,
   currentValue,
+  width = DEFAULT_DIALOG_WIDTH,
+  height = DEFAULT_DIALOG_HEIGHT,
 }) {
   const { DialogV2 } = foundry.applications.api;
 
   const content = `
-    <form class="bitd-alt selection-dialog">
+    <form class="bitd-alt selection-dialog" style="min-width: ${width}px;">
       <p style="margin-bottom: 0.5rem; font-style: italic;">${escapeHTML(instructions)}</p>
       ${getCardHtml(choices, currentValue)}
     </form>
   `;
 
   const result = await DialogV2.wait({
-    window: { title, resizable: true },
+    window: { title, resizable: true, width, height },
     content,
     render: (event, dialog) => {
       // Attach event listeners programmatically since inline handlers are stripped by Foundry's sanitization
@@ -185,9 +189,11 @@ async function openCardSelectionDialogV1({
   clearLabel,
   choices,
   currentValue,
+  width = DEFAULT_DIALOG_WIDTH,
+  height = DEFAULT_DIALOG_HEIGHT,
 }) {
   const content = `
-    <form class="bitd-alt selection-dialog">
+    <form class="bitd-alt selection-dialog" style="min-width: ${width}px;">
       <p class="instructions">${escapeHTML(instructions)}</p>
       ${getCardHtml(choices, currentValue)}
     </form>
@@ -234,7 +240,8 @@ async function openCardSelectionDialogV1({
       },
       {
         resizable: true,
-        width: 500,
+        width,
+        height,
       }
     );
     dialog.render(true);

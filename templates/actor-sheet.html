@@ -187,8 +187,8 @@
                   sectionKey="items"
                   isCollapsed=(lookup collapsedSections 'items')
                   showAdd=allow_edit
-                  addClass="item-list-add add-button"
-                  addDataAttrs='data-item-type="item" data-group-by="system.class"'
+                  addClass="chooser-add-item add-button"
+                  addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-group-by="system.class" data-item-scope="playbook" data-filter-playbook="{{selected_playbook.name}}"'
                 }}
                 <div class="section-body">
                   <div class="two-col-list">
@@ -210,7 +210,9 @@
                   filterTarget="general-items"
                   sectionKey="general-items"
                   isCollapsed=(lookup collapsedSections 'general-items')
-                  showAdd=false
+                  showAdd=allow_edit
+                  addClass="chooser-add-item add-button"
+                  addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-item-scope="general"'
                 }}
                 <div class="section-body">
                   <div class="two-col-list">
@@ -232,7 +234,9 @@
                   filterTarget="acquaintances"
                   sectionKey="acquaintances"
                   isCollapsed=(lookup collapsedSections 'acquaintances')
-                  showAdd=false
+                  showAdd=allow_edit
+                  addClass="chooser-add-acquaintance add-button"
+                  addDataAttrs='data-action="chooser-add-acquaintance"'
                 }}
                 <div class="section-body">
                 {{#if display_acquaintances}}

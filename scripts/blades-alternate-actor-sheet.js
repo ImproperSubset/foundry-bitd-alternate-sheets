@@ -607,8 +607,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
       sheetData,
       true,
       "",
-      false,
-      false
+      true,
+      true
     );
     const abilityCostFor = (ability) => {
       const rawCost = ability?.system?.price ?? ability?.system?.cost ?? 1;
@@ -667,8 +667,59 @@ export class BladesAlternateActorSheet extends BladesSheet {
       all_generic_items.splice(1, 0, heavy);
     }
 
-    sheetData.generic_items = all_generic_items;
-    sheetData.my_items = my_items;
+    // Standard items: classless defaults first, then owned classless (non-virtual) at the end
+    const ownedClassless = this.actor.items.filter((i) => {
+      const cls = (i.system?.class || i.system?.associated_class || "").trim();
+      return i.type === "item" && !cls;
+    });
+    const genericOwnedNormalized = ownedClassless.map((owned) => {
+      const clone = owned.toObject ? owned.toObject() : foundry.utils.deepClone(owned);
+      clone._id = owned.id || clone._id;
+      clone.owned = true;
+      clone.system = clone.system || {};
+      clone.system.virtual = false;
+      return clone;
+    });
+    const genericDefaults = all_generic_items.filter((def) => {
+      const cls = (def.system?.class || def.system?.associated_class || "").trim();
+      if (def.owned) return false; // skip owned items
+      return !cls; // only classless defaults
+    });
+    sheetData.generic_items = [
+      ...genericDefaults.map((def) => {
+        if (def.system) def.system.virtual = true;
+        def.owned = false;
+        return def;
+      }),
+      ...genericOwnedNormalized,
+    ];
+
+    // Special items: classed defaults first, then owned classed (non-virtual) at the end
+    const ownedClassed = this.actor.items.filter((i) => {
+      const cls = (i.system?.class || i.system?.associated_class || "").trim();
+      return i.type === "item" && !!cls;
+    });
+    const classedOwnedNormalized = ownedClassed.map((owned) => {
+      const clone = owned.toObject ? owned.toObject() : foundry.utils.deepClone(owned);
+      clone._id = owned.id || clone._id;
+      clone.owned = true;
+      clone.system = clone.system || {};
+      clone.system.virtual = false;
+      return clone;
+    });
+    const classedDefaults = my_items.filter((def) => {
+      const cls = (def.system?.class || def.system?.associated_class || "").trim();
+      if (def.owned) return false; // skip owned items
+      return !!cls;
+    });
+    sheetData.my_items = [
+      ...classedDefaults.map((def) => {
+        if (def.system) def.system.virtual = true;
+        def.owned = false;
+        return def;
+      }),
+      ...classedOwnedNormalized,
+    ];
 
     let my_abilities = sheetData.items.filter(
       (ability) => ability.type == "ability"
@@ -820,6 +871,123 @@ export class BladesAlternateActorSheet extends BladesSheet {
     await this.actor.update({
       "flags.bitd-alternate-sheets.-=equipped-items": null,
     });
+  }
+
+  async openItemChooser(filterPlaybook, itemScope = "") {
+    try {
+      const scope = itemScope || (filterPlaybook ? "playbook" : "general");
+      const playbookNameRaw =
+        scope === "playbook"
+          ? (filterPlaybook || this.actor?.items?.find((i) => i.type === "class")?.name || this.actor?.system?.playbook || "")
+        : "";
+      const playbookKey = (playbookNameRaw || "").trim().toLowerCase();
+      const isGeneral = scope !== "playbook";
+
+      let filtered = [];
+      if (isGeneral) {
+        // General list: classless items only
+        const virtualList = await Utils.getVirtualListOfItems(
+          "item",
+          { actor: this.actor },
+          true,
+          "",
+          true,
+          true
+        );
+        const scoped = virtualList.filter((i) => {
+          const itemClassRaw = i.system?.class || i.system?.associated_class || "";
+          const itemClass = (itemClassRaw || "").trim();
+          return !itemClass;
+        });
+        filtered = Utils.filterItemsForDuplicatesOnActor(scoped, "item", this.actor, true);
+      } else {
+        // Special items: all classed items from any playbook
+        const allItems = await Utils.getSourcedItemsByType("item");
+        const scoped = allItems.filter((i) => {
+          const itemClassRaw = i.system?.class || i.system?.associated_class || "";
+          return Boolean((itemClassRaw || "").trim());
+        });
+        filtered = Utils.filterItemsForDuplicatesOnActor(scoped, "item", this.actor, true);
+      }
+      const choices = filtered.map((i) => ({
+        value: i._id,
+        label: Utils.trimClassFromName(i.name) || i.name,
+        img: i.img || "icons/svg/mystery-man.svg",
+        description: i.system?.description ?? "",
+      }));
+
+      const result = await openCardSelectionDialog({
+        title: `${game.i18n.localize("bitd-alt.Select")} ${game.i18n.localize("bitd-alt.items")}`,
+        instructions: game.i18n.localize("bitd-alt.SelectToAddItem"),
+        okLabel: game.i18n.localize("bitd-alt.Ok"),
+        cancelLabel: game.i18n.localize("bitd-alt.Cancel"),
+        clearLabel: game.i18n.localize("bitd-alt.Cancel"),
+        choices,
+      });
+
+      if (!result) return;
+      const selected = filtered.find((i) => i._id === result);
+      if (!selected) return;
+
+      const itemData = {
+        name: selected.name,
+        type: selected.type,
+        system: foundry.utils.deepClone(selected.system ?? {}),
+        img: selected.img,
+      };
+      if (itemData.system) {
+        delete itemData.system.virtual;
+      }
+      if (isGeneral) {
+        if (itemData.system) {
+          delete itemData.system.class;
+          delete itemData.system.associated_class;
+        }
+      } else {
+        // Preserve source class for special items; do not override playbook tagging
+        if (!itemData.system) itemData.system = {};
+        const existingClass = (itemData.system.class || itemData.system.associated_class || "").trim();
+        if (existingClass) {
+          itemData.system.class = existingClass;
+        }
+      }
+      await this.actor.createEmbeddedDocuments("Item", [itemData]);
+    } catch (err) {
+      ui.notifications.error(`Failed to add item: ${err.message}`);
+      console.error("Item chooser error", err);
+    }
+  }
+
+  async openAcquaintanceChooser() {
+    try {
+      const allNpcs = await Utils.getSourcedItemsByType("npc");
+      const existingIds = new Set((this.actor.system.acquaintances ?? []).map((a) => a.id || a._id));
+      const filtered = allNpcs.filter((n) => !existingIds.has(n._id));
+      const choices = filtered.map((npc) => ({
+        value: npc._id,
+        label: npc.name,
+        img: npc.img || "icons/svg/mystery-man.svg",
+        description: npc.system?.description_short ?? npc.system?.description ?? "",
+      }));
+
+      const result = await openCardSelectionDialog({
+        title: `${game.i18n.localize("bitd-alt.Select")} ${game.i18n.localize("bitd-alt.Acquaintances")}`,
+        instructions: game.i18n.localize("bitd-alt.SelectToAddItem"),
+        okLabel: game.i18n.localize("bitd-alt.Ok"),
+        cancelLabel: game.i18n.localize("bitd-alt.Cancel"),
+        clearLabel: game.i18n.localize("bitd-alt.Cancel"),
+        choices,
+      });
+
+      if (!result) return;
+      const selected = filtered.find((n) => n._id === result);
+      if (!selected) return;
+
+      await Utils.addAcquaintance(this.actor, selected);
+    } catch (err) {
+      ui.notifications.error(`Failed to add acquaintance: ${err.message}`);
+      console.error("Acquaintance chooser error", err);
+    }
   }
 
   addTermTooltips(html) {
@@ -1043,6 +1211,18 @@ export class BladesAlternateActorSheet extends BladesSheet {
     // Everything below here is only needed if the sheet is editable
     if (!this.options.editable) return;
 
+    html.find('[data-action="chooser-add-item"]').off("click").on("click", (ev) => {
+      ev.preventDefault();
+      const filterPlaybook = ev.currentTarget?.dataset?.filterPlaybook;
+      const itemScope = ev.currentTarget?.dataset?.itemScope;
+      this.openItemChooser(filterPlaybook, itemScope);
+    });
+
+    html.find('[data-action="chooser-add-acquaintance"]').off("click").on("click", (ev) => {
+      ev.preventDefault();
+      this.openAcquaintanceChooser();
+    });
+
     const ContextMenuClass =
       foundry?.applications?.ux?.ContextMenu?.implementation ?? ContextMenu;
     const contextMenuOptions = { jQuery: false };
@@ -1050,7 +1230,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     new ContextMenuClass(root, ".item-block.owned", this.itemContextMenu, contextMenuOptions);
     new ContextMenuClass(root, ".context-items > span", this.itemListContextMenu, contextMenuOptions);
-    new ContextMenuClass(root, ".item-list-add", this.itemListContextMenu, { ...contextMenuOptions, eventName: "click" });
     new ContextMenuClass(root, ".context-abilities", this.abilityListContextMenu, contextMenuOptions);
     new ContextMenuClass(root, ".ability-add-popup", this.abilityListContextMenu, { ...contextMenuOptions, eventName: "click" });
     new ContextMenuClass(root, ".trauma-item", this.traumaListContextMenu, contextMenuOptions);

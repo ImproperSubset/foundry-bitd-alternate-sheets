@@ -725,6 +725,7 @@ export class Utils {
       } else {
         item_blueprint = await Utils.getItemByType(type, id);
       }
+      if (!item_blueprint || !item_blueprint.id) return;
 
       if (state) {
         // Atomic Add
@@ -948,8 +949,17 @@ export class Utils {
     });
     if (include_owned_items) {
       owned_items = data.actor.items.filter((item) => {
+        if (item.type !== type) return false;
+        const itemClass = item.system?.class ?? item.system?.associated_class ?? "";
+        if (filter_playbook) {
+          // When filtering for a playbook, only include owned items that match that playbook
+          if (!itemClass || itemClass !== filter_playbook) return false;
+        } else {
+          // General list: only include classless items
+          if (itemClass) return false;
+        }
         item.owned = true;
-        return item.type === type;
+        return true;
       });
     } else {
       owned_items = [];
