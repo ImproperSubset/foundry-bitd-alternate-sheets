@@ -1,10 +1,15 @@
 <header class="full-bar {{#if flex}}flex-header context-items{{/if}}">
-  <a class="collapse-toggle" data-action="toggle-section-collapse" data-section-key="{{sectionKey}}">
+  {{#if dockable}}
+  <a class="dock-handle" aria-label="{{localize 'bitd-alt.DragToReorder'}}"><i class="fas fa-grip-vertical"></i></a>
+  {{/if}}
+  <a class="collapse-toggle section-toggle" data-action="toggle-section-collapse" data-section-key="{{sectionKey}}"
+    aria-label="{{localize 'BITD.ToggleSection'}}">
     <i class="fas {{#if isCollapsed}}fa-caret-right{{else}}fa-caret-down{{/if}}"></i>
   </a>
   <span>{{label}}</span>
   {{#if showFilter}}
-  <a class="filter-toggle {{#if isFiltered}}active{{/if}}" data-action="toggle-filter" data-filter-target="{{filterTarget}}" data-tooltip="Show checked only">
+  <a class="filter-toggle {{#if isFiltered}}active{{/if}}" data-action="toggle-filter"
+    data-filter-target="{{filterTarget}}" data-tooltip="Show checked only">
     <i class="fas fa-filter"></i>
   </a>
   {{/if}}

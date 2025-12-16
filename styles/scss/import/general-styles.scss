@@ -24,7 +24,7 @@ section.flex {
   //flex-direction: column;
   justify-content: space-between;
 
-  > *:not(.label-stripe) {
+  >*:not(.label-stripe) {
     margin-right: 10px;
 
     &:last-child {
@@ -53,6 +53,7 @@ section.flex {
 
 .tab[data-tab] {
   display: none;
+
   &.active {
     display: block;
   }
@@ -68,6 +69,7 @@ section.flex {
   display: flex;
   flex-direction: column;
 }
+
 .black-label {
   background-color: $almost_black;
   color: $almost_white;
@@ -100,6 +102,20 @@ section.flex {
   padding-right: 10px;
   display: flex;
   font-weight: bold;
+
+  .dock-handle {
+    margin-right: 8px;
+    cursor: grab;
+    color: rgba(255, 255, 255, 0.5);
+
+    &:hover {
+      color: white;
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
 }
 
 .label-stripe-gray {
@@ -237,6 +253,7 @@ section.flex {
   .fa-lock-open {
     display: inline-block;
   }
+
   .fa-lock {
     display: none;
   }
@@ -251,12 +268,10 @@ section.flex {
 
 i {
   &.nullifier {
-    @include changeable(
-      $transition-period,
+    @include changeable($transition-period,
       $hover-brightness,
       $hover-opacity,
-      $red
-    );
+      $red );
   }
 }
 
@@ -268,8 +283,7 @@ i {
     box-shadow: none;
     border: none;
     cursor: pointer;
-    background: url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>")
-      no-repeat right;
+    background: url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>") no-repeat right;
     padding: 0 20px 0 0;
     margin: 0.1em -6px 0 0;
     background-color: $almost_black;
@@ -297,9 +311,11 @@ i {
     width: 100px;
     margin-left: 10px;
   }
+
   .item-body {
     width: auto;
   }
+
   .item-description {
     width: 260px;
   }

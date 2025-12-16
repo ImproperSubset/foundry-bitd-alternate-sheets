@@ -907,7 +907,7 @@
             }
           }
 
-          /* Override playbook layout to flex-based two-column structure */
+          /* Override playbook layout to two-column dock structure */
           .playbook {
             display: flex;
             align-items: flex-start;
@@ -917,18 +917,43 @@
               display: none;
             }
 
-            .abilities {
-              flex: 1 1 50%;
-              background: $lightgray;
-            }
-
-            .playbook-right {
+            .dock-column {
               flex: 1 1 50%;
               display: flex;
               flex-direction: column;
-              gap: 0.5em;
-              border-left: 1px solid $almost_black;
-              padding-left: 0;
+              min-width: 0; // Prevent flex blowout
+              height: 100%;
+
+              &[data-dock-column="left"] {
+                .abilities {
+                  background: $lightgray;
+                }
+
+                // Ensure items inside left column look correct
+                .item-list {
+                  background: $lightgray;
+                }
+              }
+
+              &[data-dock-column="right"] {
+                border-left: 1px solid $almost_black;
+                padding-left: 0;
+
+                // Gap between sections in right column
+                >.dock-section {
+                  margin-bottom: 0.5em;
+
+                  &:last-child {
+                    margin-bottom: 0;
+                  }
+                }
+              }
+            }
+
+            // Legacy/Shared styles adapted for dock-section wrappers
+            .dock-section {
+              // Ensure content fills width
+              width: 100%;
             }
 
             .section-block {

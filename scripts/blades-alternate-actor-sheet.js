@@ -5,6 +5,7 @@ import { Profiler } from "./profiler.js";
 import { queueUpdate } from "./lib/update-queue.js";
 import { openCrewSelectionDialog, openCardSelectionDialog } from "./lib/dialog-compat.js";
 import { enrichHTML } from "./compat.js";
+import { initDockableSections } from "./ui/dockable-sections.js";
 
 // import { migrateWorld } from "../../../systems/blades-in-the-dark/module/migration.js";
 
@@ -1161,6 +1162,14 @@ export class BladesAlternateActorSheet extends BladesSheet {
   /** @override */
   activateListeners(html) {
     super.activateListeners(html);
+
+    // Initialize Dockable Sections (2-column drag-and-drop)
+    initDockableSections({
+      root: html[0], // Pass the raw DOM element
+      actorUuid: this.actor.uuid,
+      namespace: "bitd-alternate-sheets",
+      // Default to "Left: Abilities, Items", "Right: Friends, XP" based on template structure
+    });
 
     this.addTermTooltips(html);
 
