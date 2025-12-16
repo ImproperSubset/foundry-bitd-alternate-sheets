@@ -54,6 +54,8 @@
     }
 
     .section-block {
+      position: relative;
+
       .collapse-toggle {
         color: white;
         cursor: pointer;
@@ -225,20 +227,20 @@
 
     header.full-bar {
       @include full-bar-header();
+    }
 
-      .stripe-tooth-body {
+    .stripe-tooth-body {
 
-        &.right,
-        &.stress {
-          position: absolute;
-          top: 1px;
-          right: 1px;
-          @include teeth-track(25px,
-            10px,
-            "assets/teeth/xptooth-red.png",
-            "assets/teeth/xptooth-white.png",
-            $gap: 3px);
-        }
+      &.right,
+      &.stress {
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        @include teeth-track(25px,
+          10px,
+          "assets/teeth/xptooth-red.png",
+          "assets/teeth/xptooth-white.png",
+          $gap: 3px);
       }
     }
 
