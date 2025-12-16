@@ -568,15 +568,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
         false,
         true
       );
-      my_items = await Utils.getVirtualListOfItems(
-        "item",
-        sheetData,
-        true,
-        sheetData.selected_playbook.name,
-        true,
-        true
-      );
-
+      // my_items logic removed here, will be handled below
       sheetData.selected_playbook_full = sheetData.selected_playbook;
       sheetData.selected_playbook_full = await Utils.getItemByType(
         "class",
@@ -591,25 +583,9 @@ export class BladesAlternateActorSheet extends BladesSheet {
         false,
         true
       );
-
-      my_items = await Utils.getVirtualListOfItems(
-        "item",
-        sheetData,
-        true,
-        "noclassselectod",
-        true,
-        true
-      );
+      // my_items logic removed here, will be handled below
     }
 
-    all_generic_items = await Utils.getVirtualListOfItems(
-      "item",
-      sheetData,
-      true,
-      "",
-      true,
-      true
-    );
     const abilityCostFor = (ability) => {
       const rawCost = ability?.system?.price ?? ability?.system?.cost ?? 1;
       const parsed = Number(rawCost);
@@ -645,13 +621,24 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     sheetData.available_playbook_abilities = filteredAbilities;
 
-    let armor = all_generic_items.findSplice((item) =>
+    // Standard Items: Classless Defaults (Virtual) + Classless Owned (Real)
+    const genericDefaultsRaw = await Utils.getVirtualListOfItems(
+      "item",
+      sheetData,
+      true, // sort
+      "", // filter_playbook (empty for generic/standard)
+      false, // duplicate_owned
+      false // include_owned - we handle owned separately
+    );
+
+    // Sort and prioritize Armor and Heavy for defaults
+    let armor = genericDefaultsRaw.findSplice((item) =>
       item.name.includes(game.i18n.localize("BITD.Armor"))
     );
-    let heavy = all_generic_items.findSplice((item) =>
+    let heavy = genericDefaultsRaw.findSplice((item) =>
       item.name.includes(game.i18n.localize("BITD.Heavy"))
     );
-    all_generic_items.sort((a, b) => {
+    genericDefaultsRaw.sort((a, b) => {
       if (a.name === b.name) {
         return 0;
       }
@@ -661,65 +648,71 @@ export class BladesAlternateActorSheet extends BladesSheet {
     });
 
     if (armor) {
-      all_generic_items.splice(0, 0, armor);
+      genericDefaultsRaw.splice(0, 0, armor);
     }
     if (heavy) {
-      all_generic_items.splice(1, 0, heavy);
+      genericDefaultsRaw.splice(1, 0, heavy);
     }
 
-    // Standard items: classless defaults first, then owned classless (non-virtual) at the end
-    const ownedClassless = this.actor.items.filter((i) => {
+    const genericDefaults = genericDefaultsRaw.filter((def) => {
+      const cls = (def.system?.class || def.system?.associated_class || "").trim();
+      return !cls; // Only classless
+    }).map(d => {
+      // Ensure virtual flag is set
+      if (!d.system) d.system = {};
+      d.system.virtual = true;
+      d.owned = false;
+      return d;
+    });
+
+    const genericOwned = this.actor.items.filter((i) => {
       const cls = (i.system?.class || i.system?.associated_class || "").trim();
       return i.type === "item" && !cls;
+    }).map(i => {
+      // Normalize owned item for display
+      const data = i.toObject ? i.toObject() : foundry.utils.deepClone(i);
+      data._id = i.id;
+      if (!data.system) data.system = {};
+      data.system.virtual = false;
+      data.owned = true;
+      return data;
     });
-    const genericOwnedNormalized = ownedClassless.map((owned) => {
-      const clone = owned.toObject ? owned.toObject() : foundry.utils.deepClone(owned);
-      clone._id = owned.id || clone._id;
-      clone.owned = true;
-      clone.system = clone.system || {};
-      clone.system.virtual = false;
-      return clone;
-    });
-    const genericDefaults = all_generic_items.filter((def) => {
-      const cls = (def.system?.class || def.system?.associated_class || "").trim();
-      if (def.owned) return false; // skip owned items
-      return !cls; // only classless defaults
-    });
-    sheetData.generic_items = [
-      ...genericDefaults.map((def) => {
-        if (def.system) def.system.virtual = true;
-        def.owned = false;
-        return def;
-      }),
-      ...genericOwnedNormalized,
-    ];
 
-    // Special items: classed defaults first, then owned classed (non-virtual) at the end
-    const ownedClassed = this.actor.items.filter((i) => {
+    sheetData.generic_items = [...genericDefaults, ...genericOwned];
+
+    // Special Items: Classed Defaults (Virtual) + Classed Owned (Real)
+    const currentPlaybookName = sheetData.selected_playbook ? sheetData.selected_playbook.name : "noclassselectod";
+    const classedDefaultsRaw = await Utils.getVirtualListOfItems(
+      "item",
+      sheetData,
+      true, // sort
+      currentPlaybookName, // filter by playbook
+      false, // duplicate_owned
+      false // include_owned
+    );
+
+    // Utils.getVirtualListOfItems already filters by playbook if passed, but let's be safe and explicit
+    // It returns things that match the playbook.
+    const classedDefaults = classedDefaultsRaw.map(d => {
+      if (!d.system) d.system = {};
+      d.system.virtual = true;
+      d.owned = false;
+      return d;
+    });
+
+    const classedOwned = this.actor.items.filter((i) => {
       const cls = (i.system?.class || i.system?.associated_class || "").trim();
       return i.type === "item" && !!cls;
+    }).map(i => {
+      const data = i.toObject ? i.toObject() : foundry.utils.deepClone(i);
+      data._id = i.id;
+      if (!data.system) data.system = {};
+      data.system.virtual = false;
+      data.owned = true;
+      return data;
     });
-    const classedOwnedNormalized = ownedClassed.map((owned) => {
-      const clone = owned.toObject ? owned.toObject() : foundry.utils.deepClone(owned);
-      clone._id = owned.id || clone._id;
-      clone.owned = true;
-      clone.system = clone.system || {};
-      clone.system.virtual = false;
-      return clone;
-    });
-    const classedDefaults = my_items.filter((def) => {
-      const cls = (def.system?.class || def.system?.associated_class || "").trim();
-      if (def.owned) return false; // skip owned items
-      return !!cls;
-    });
-    sheetData.my_items = [
-      ...classedDefaults.map((def) => {
-        if (def.system) def.system.virtual = true;
-        def.owned = false;
-        return def;
-      }),
-      ...classedOwnedNormalized,
-    ];
+
+    sheetData.my_items = [...classedDefaults, ...classedOwned];
 
     let my_abilities = sheetData.items.filter(
       (ability) => ability.type == "ability"
@@ -879,7 +872,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
       const playbookNameRaw =
         scope === "playbook"
           ? (filterPlaybook || this.actor?.items?.find((i) => i.type === "class")?.name || this.actor?.system?.playbook || "")
-        : "";
+          : "";
       const playbookKey = (playbookNameRaw || "").trim().toLowerCase();
       const isGeneral = scope !== "playbook";
 

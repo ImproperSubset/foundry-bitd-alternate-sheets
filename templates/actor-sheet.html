@@ -140,18 +140,19 @@
       <section class="tab-content">
         <div class="tab" data-tab="playbook" data-group="primary-tabs">
           <div class="playbook">
-            <section class="abilities section-block {{#if (lookup collapsedSections 'abilities')}}collapsed{{/if}}" data-section-key="abilities">
+            <section class="abilities section-block {{#if (lookup collapsedSections 'abilities')}}collapsed{{/if}}"
+              data-section-key="abilities">
               {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-                label=(localize "BITD.SpecialAbilities")
-                flex=false
-                showFilter=true
-                isFiltered=showFilteredAbilities
-                filterTarget="abilities"
-                sectionKey="abilities"
-                isCollapsed=(lookup collapsedSections 'abilities')
-                showAdd=allow_edit
-                addClass="ability-add-popup add-button"
-                addDataAttrs='data-item-type="ability" data-group-by="system.class"'
+              label=(localize "BITD.SpecialAbilities")
+              flex=false
+              showFilter=true
+              isFiltered=showFilteredAbilities
+              filterTarget="abilities"
+              sectionKey="abilities"
+              isCollapsed=(lookup collapsedSections 'abilities')
+              showAdd=allow_edit
+              addClass="ability-add-popup add-button"
+              addDataAttrs='data-item-type="ability" data-group-by="system.class"'
               }}
               <div class="section-body">
                 <div class="stripe-tooth-body right">
@@ -159,105 +160,114 @@
                   <input type="radio" id="{{actor._id}}-experience-0" name="system.experience" value="0"
                     checked="checked" class="zero">
                   {{#times_from_1 system.experience_max}}
-                    <input type="radio" id="character-{{../actor._id}}-experience-{{this}}" name="system.experience"
-                      value="{{this}}" dtype="Radio" class="radio-toggle">
-                    <label for="character-{{../actor._id}}-experience-{{this}}"
-                      class="{{#if (gte ../system.experience @this)}}on{{/if}} radio-toggle"></label>
-                    {{/times_from_1}}
-                    {{/multiboxes}}
-                  </div>
-              <section class="ability-list check-list">
-                {{#each available_playbook_abilities as |ability index|}}
-                {{#with ../actor as |actor|}}
-                {{> "modules/bitd-alternate-sheets/templates/parts/ability.html" actor=actor ability=ability
-                allow_edit=../../allow_edit}}
-                {{/with}}
-                {{/each}}
-              </section>
-              </div>
-            </section>
-            <div class="playbook-right">
-              <section class="playbook-items item-list section-block {{#if (lookup collapsedSections 'items')}}collapsed{{/if}}" data-section-key="items">
-                {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-                  label=(localize "bitd-alt.specialItems")
-                  flex=true
-                  showFilter=false
-                  isFiltered=showFilteredItems
-                  filterTarget="items"
-                  sectionKey="items"
-                  isCollapsed=(lookup collapsedSections 'items')
-                  showAdd=allow_edit
-                  addClass="chooser-add-item add-button"
-                  addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-group-by="system.class" data-item-scope="playbook" data-filter-playbook="{{selected_playbook.name}}"'
-                }}
-                <div class="section-body">
-                  <div class="two-col-list">
-                  {{#each my_items as |item index|}}
+                  <input type="radio" id="character-{{../actor._id}}-experience-{{this}}" name="system.experience"
+                    value="{{this}}" dtype="Radio" class="radio-toggle">
+                  <label for="character-{{../actor._id}}-experience-{{this}}"
+                    class="{{#if (gte ../system.experience @this)}}on{{/if}} radio-toggle"></label>
+                  {{/times_from_1}}
+                  {{/multiboxes}}
+                </div>
+                <section class="ability-list check-list">
+                  {{#each available_playbook_abilities as |ability index|}}
                   {{#with ../actor as |actor|}}
-                  {{> "modules/bitd-alternate-sheets/templates/parts/item.html" actor=actor item=item
+                  {{> "modules/bitd-alternate-sheets/templates/parts/ability.html" actor=actor ability=ability
                   allow_edit=../../allow_edit}}
                   {{/with}}
                   {{/each}}
-                  </div>
-                </div>
-              </section>
-              <section class="all-items item-list section-block {{#if (lookup collapsedSections 'general-items')}}collapsed{{/if}}" data-section-key="general-items">
+                </section>
+              </div>
+            </section>
+            <div class="playbook-right">
+              <section
+                class="playbook-items item-list section-block {{#if (lookup collapsedSections 'items')}}collapsed{{/if}}"
+                data-section-key="items">
                 {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-                  label=(localize "bitd-alt.items")
-                  flex=true
-                  showFilter=false
-                  isFiltered=false
-                  filterTarget="general-items"
-                  sectionKey="general-items"
-                  isCollapsed=(lookup collapsedSections 'general-items')
-                  showAdd=allow_edit
-                  addClass="chooser-add-item add-button"
-                  addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-item-scope="general"'
+                label=(localize "bitd-alt.specialItems")
+                flex=true
+                showFilter=false
+                isFiltered=showFilteredItems
+                filterTarget="items"
+                sectionKey="items"
+                isCollapsed=(lookup collapsedSections 'items')
+                showAdd=allow_edit
+                addClass="chooser-add-item add-button"
+                addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-group-by="system.class"
+                data-item-scope="playbook" data-filter-playbook="{{selected_playbook.name}}"'
                 }}
                 <div class="section-body">
                   <div class="two-col-list">
-                  {{#each generic_items as |item index|}}
-                  {{#with ../actor as |actor|}}
-                  {{> "modules/bitd-alternate-sheets/templates/parts/item.html" actor=actor item=item
-                  allow_edit=../allow_edit}}
-                  {{/with}}
-                  {{/each}}
+                    {{#each my_items as |item index|}}
+                    {{#with ../actor as |actor|}}
+                    {{> "modules/bitd-alternate-sheets/templates/parts/item.html" actor=actor item=item
+                    allow_edit=../../allow_edit}}
+                    {{/with}}
+                    {{/each}}
                   </div>
                 </div>
               </section>
-              <section class="friends-rivals section-block {{#if (lookup collapsedSections 'acquaintances')}}collapsed{{/if}}" data-section-key="acquaintances">
+              <section
+                class="all-items item-list section-block {{#if (lookup collapsedSections 'general-items')}}collapsed{{/if}}"
+                data-section-key="general-items">
                 {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-                  label=(localize acquaintances_label)
-                  flex=false
-                  showFilter=true
-                  isFiltered=showFilteredAcquaintances
-                  filterTarget="acquaintances"
-                  sectionKey="acquaintances"
-                  isCollapsed=(lookup collapsedSections 'acquaintances')
-                  showAdd=allow_edit
-                  addClass="chooser-add-acquaintance add-button"
-                  addDataAttrs='data-action="chooser-add-acquaintance"'
+                label=(localize "bitd-alt.items")
+                flex=true
+                showFilter=false
+                isFiltered=false
+                filterTarget="general-items"
+                sectionKey="general-items"
+                isCollapsed=(lookup collapsedSections 'general-items')
+                showAdd=allow_edit
+                addClass="chooser-add-item add-button"
+                addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-item-scope="general"'
                 }}
                 <div class="section-body">
-                {{#if display_acquaintances}}
-                {{#each display_acquaintances}}
-                <div class="acquaintance" data-acquaintance="{{this.id}}">
-                  {{> "modules/bitd-alternate-sheets/templates/parts/acquaintance-body.html" id=this.id name=this.name standing=this.standing description_short=this.description_short}}
-                </div>
-                {{/each}}
-                {{/if}}
+                  <div class="two-col-list">
+                    {{#each generic_items as |item index|}}
+                    {{#with ../actor as |actor|}}
+                    {{> "modules/bitd-alternate-sheets/templates/parts/item.html" actor=actor item=item
+                    allow_edit=../../allow_edit}}
+                    {{/with}}
+                    {{/each}}
+                  </div>
                 </div>
               </section>
-              <section class="xp-notes section-block {{#if (lookup collapsedSections 'xp-notes')}}collapsed{{/if}}" data-section-key="xp-notes">
+              <section
+                class="friends-rivals section-block {{#if (lookup collapsedSections 'acquaintances')}}collapsed{{/if}}"
+                data-section-key="acquaintances">
                 {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-                  label="XP"
-                  flex=false
-                  showFilter=false
-                  isFiltered=false
-                  filterTarget="xp-notes"
-                  sectionKey="xp-notes"
-                  isCollapsed=(lookup collapsedSections 'xp-notes')
-                  showAdd=false
+                label=(localize acquaintances_label)
+                flex=false
+                showFilter=true
+                isFiltered=showFilteredAcquaintances
+                filterTarget="acquaintances"
+                sectionKey="acquaintances"
+                isCollapsed=(lookup collapsedSections 'acquaintances')
+                showAdd=allow_edit
+                addClass="chooser-add-acquaintance add-button"
+                addDataAttrs='data-action="chooser-add-acquaintance"'
+                }}
+                <div class="section-body">
+                  {{#if display_acquaintances}}
+                  {{#each display_acquaintances}}
+                  <div class="acquaintance" data-acquaintance="{{this.id}}">
+                    {{> "modules/bitd-alternate-sheets/templates/parts/acquaintance-body.html" id=this.id name=this.name
+                    standing=this.standing description_short=this.description_short}}
+                  </div>
+                  {{/each}}
+                  {{/if}}
+                </div>
+              </section>
+              <section class="xp-notes section-block {{#if (lookup collapsedSections 'xp-notes')}}collapsed{{/if}}"
+                data-section-key="xp-notes">
+                {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
+                label="XP"
+                flex=false
+                showFilter=false
+                isFiltered=false
+                filterTarget="xp-notes"
+                sectionKey="xp-notes"
+                isCollapsed=(lookup collapsedSections 'xp-notes')
+                showAdd=false
                 }}
                 <div class="section-body">
                   <ul>
