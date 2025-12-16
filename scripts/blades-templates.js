@@ -11,6 +11,7 @@ export const preloadHandlebarsTemplates = function () {
     // Actor Sheet Partials
     "modules/bitd-alternate-sheets/templates/parts/coins.html",
     "modules/bitd-alternate-sheets/templates/parts/attributes.html",
+    "modules/bitd-alternate-sheets/templates/parts/xp-tracks.html",
     "modules/bitd-alternate-sheets/templates/parts/harm.html",
     "modules/bitd-alternate-sheets/templates/parts/load.html",
     "modules/bitd-alternate-sheets/templates/parts/radiotoggles.html",

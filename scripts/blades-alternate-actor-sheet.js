@@ -1137,24 +1137,45 @@ export class BladesAlternateActorSheet extends BladesSheet {
     });
   }
 
-  _onRadioToggle(event) {
+  async _onRadioToggle(event) {
+    event.preventDefault();
+
     let type = event.target.tagName.toLowerCase();
     let target = event.target;
     if (type == "label") {
       let labelID = $(target).attr("for");
-      target = $(`#${labelID}`).get(0);
+      target = document.getElementById(labelID);
     }
-    if (target.checked) {
-      //find the next lowest-value input with the same name and click that one instead
-      let name = target.name;
-      let value = parseInt(target.value) - 1;
-      this.element
-        .find(`input[name="${name}"][value="${value}"]`)
-        .trigger("click");
+
+    if (!target) return;
+
+    const fieldName = target.name;
+    const clickedValue = parseInt(target.value);
+
+    // Get current value from actor data
+    const currentValue = foundry.utils.getProperty(this.actor, fieldName) ?? 0;
+
+    // Determine the new value based on visual state (red vs white)
+    // Red teeth: values 1 through currentValue
+    // White teeth: values greater than currentValue
+    let newValue;
+    if (clickedValue <= currentValue) {
+      // Clicking a red tooth → decrement (set to one below clicked)
+      newValue = clickedValue - 1;
     } else {
-      //trigger the click on this one
-      $(target).trigger("click");
+      // Clicking a white tooth → set to this value
+      newValue = clickedValue;
     }
+
+    // Optimistic UI update: find and check the correct input
+    const targetInput = this.element.find(`input[name="${fieldName}"][value="${newValue}"]`);
+    if (targetInput.length) {
+      targetInput.prop("checked", true);
+    }
+
+    // Direct Foundry update
+    await this.actor.update({ [fieldName]: newValue }, { render: false });
+    this.render(false);
   }
 
   /* -------------------------------------------- */
@@ -1262,12 +1283,12 @@ export class BladesAlternateActorSheet extends BladesSheet {
     html.find("img.clockImage").on("click", async (e) => {
       Utils.bindClockControls(html, this.render.bind(this));
     });
-    html
-      .find("input.radio-toggle, label.radio-toggle")
-      .click((e) => e.preventDefault());
-    html.find("input.radio-toggle, label.radio-toggle").mousedown((e) => {
-      this._onRadioToggle(e);
-    });
+    html.find("input.radio-toggle, label.radio-toggle")
+      .off("click.radioToggle mousedown.radioToggle")
+      .on("click.radioToggle", (e) => e.preventDefault())
+      .on("mousedown.radioToggle", (e) => {
+        this._onRadioToggle(e);
+      });
 
     html.find(".inline-input").on("keyup", async (ev) => {
       let input = ev.currentTarget.previousSibling;

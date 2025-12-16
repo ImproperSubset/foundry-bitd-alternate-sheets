@@ -159,18 +159,13 @@
                   dockable=true
                   }}
                   <div class="section-body">
-                    <div class="stripe-tooth-body right">
-                      {{#multiboxes system.experience}}
-                      <input type="radio" id="{{actor._id}}-experience-0" name="system.experience" value="0"
-                        checked="checked" class="zero">
-                      {{#times_from_1 system.experience_max}}
-                      <input type="radio" id="character-{{../actor._id}}-experience-{{this}}" name="system.experience"
-                        value="{{this}}" dtype="Radio" class="radio-toggle">
-                      <label for="character-{{../actor._id}}-experience-{{this}}"
-                        class="{{#if (gte ../system.experience @this)}}on{{/if}} radio-toggle"></label>
-                      {{/times_from_1}}
-                      {{/multiboxes}}
-                    </div>
+                    {{> "modules/bitd-alternate-sheets/templates/parts/xp-tracks.html"
+                    value=system.experience
+                    max=system.experience_max
+                    field="system.experience"
+                    rootId=(concat actor._id "-experience")
+                    cssClass="abilities-xp-track"
+                    }}
                     <section class="ability-list check-list">
                       {{#each available_playbook_abilities as |ability index|}}
                       {{#with ../actor as |actor|}}

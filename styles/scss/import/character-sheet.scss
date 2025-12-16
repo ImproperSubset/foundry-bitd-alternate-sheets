@@ -231,16 +231,42 @@
 
     .stripe-tooth-body {
 
-      &.right,
-      &.stress {
+      &.right {
         position: absolute;
         top: 1px;
-        right: 30px;
+        right: 1px;
         @include teeth-track(25px,
           10px,
           "assets/teeth/xptooth-red.png",
           "assets/teeth/xptooth-white.png",
           $gap: 3px);
+
+        // Reinforce the active tooth state
+        input[type="radio"]:checked+label,
+        input[type="radio"]:checked+label.radio-toggle {
+          background-image: url("assets/teeth/xptooth-red.png");
+        }
+
+        &.abilities-xp-track {
+          right: 30px;
+        }
+      }
+
+      &.stress {
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        @include teeth-track(25px,
+          10px,
+          "assets/teeth/xptooth-red.png",
+          "assets/teeth/xptooth-white.png",
+          $gap: 3px);
+
+        // Reinforce the active tooth state
+        input[type="radio"]:checked+label,
+        input[type="radio"]:checked+label.radio-toggle {
+          background-image: url("assets/teeth/xptooth-red.png");
+        }
       }
     }
 
