@@ -682,6 +682,43 @@ header {
       flex: 0 0 auto;
     }
   }
+
+  // Styles for the standardized blades-clock in the crew header (and potentially here if moved)
+  .crew-xp-clock {
+
+    // Ensure the clock displays correctly
+    .blades-clock {
+      &.clock-4 {
+        @include clock(4, 40);
+      }
+
+      &.clock-6 {
+        @include clock(6, 40);
+      }
+
+      &.clock-8 {
+        @include clock(8, 40);
+      }
+
+      &.clock-10 {
+        @include clock(10, 40);
+      }
+
+      &.clock-12 {
+        @include clock(12, 40);
+      }
+
+      // Hide internal nullifier if it ends up inside
+      label i.nullifier {
+        display: none;
+      }
+    }
+
+    // Hide the zero label (sibling of .blades-clock)
+    label.clock-zero-label {
+      display: none;
+    }
+  }
 }
 
 .portrait-coins {

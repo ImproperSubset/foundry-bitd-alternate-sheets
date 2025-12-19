@@ -1280,9 +1280,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
       e.preventDefault();
       await this.clearLoad();
     });
-    html.find("img.clockImage").on("click", async (e) => {
-      Utils.bindClockControls(html, this.render.bind(this));
-    });
+    Utils.bindClockControls(html, this.render.bind(this));
     html.find("input.radio-toggle, label.radio-toggle")
       .off("click.radioToggle mousedown.radioToggle")
       .on("click.radioToggle", (e) => e.preventDefault())

@@ -13,14 +13,13 @@ export class Profiler {
   static log(label, data = {}) {
     if (!Profiler.enabled) return;
     try {
-      console.log(
-        PREFIX,
-        label,
-        JSON.stringify({
-          ...data,
-          ts: Date.now(),
-        })
-      );
+      const msg = `${PREFIX} ${label} ${(data.duration || 0).toFixed(2)}ms`;
+      console.log(msg, data);
+
+      // Also show a toast notification for visibility
+      if (typeof ui !== "undefined" && ui.notifications) {
+        ui.notifications.info(`${label}: ${(data.duration || 0).toFixed(2)}ms`);
+      }
     } catch (err) {
       // Swallow logging errors to avoid impacting runtime.
     }

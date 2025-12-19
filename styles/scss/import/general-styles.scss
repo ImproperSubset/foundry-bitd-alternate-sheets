@@ -334,3 +334,6 @@ td {
   font-size: 0.85em;
   line-height: 1.2em;
 }
+
+// NOTE: Global clock styles are now in clocks.scss (loaded at top-level)
+// to ensure they work in chat, journals, and other non-sheet contexts.

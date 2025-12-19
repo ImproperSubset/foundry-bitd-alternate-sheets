@@ -79,6 +79,7 @@
   &.item.sheet.class {
     @include meta.load-css("./import/class-sheet");
   }
+
   //&.actor.clock{
   //  @use './import/clock-sheet' as *;
   //}
@@ -91,3 +92,7 @@
 //@use './import/chat' as *;
 //@use './import/dialogs' as *;
 @include meta.load-css("./import/tooltip");
+
+// Global clock styles - MUST be outside .blades-alt namespace
+// to work in chat, journals, and other non-sheet contexts
+@include meta.load-css("./import/clocks");

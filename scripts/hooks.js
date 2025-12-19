@@ -24,38 +24,108 @@ export async function registerHooks() {
       registerDiceSoNiceChanges(dice3d);
     });
 
-    CONFIG.TextEditor.enrichers = CONFIG.TextEditor.enrichers.concat([
-      {
-        pattern: /(@UUID\[([^]*?)]){[^}]*?}/gm,
-        enricher: async (match, options) => {
-          let linkedDoc = await fromUuid(match[2]);
-          if (linkedDoc?.type == "🕛 clock") {
-            const type = linkedDoc.system?.type ?? "";
-            const value = linkedDoc.system?.value ?? 0;
-            const color = linkedDoc.system?.color ?? "black";
-            const doc = document.createElement("div");
-            doc.classList.add("linkedClock");
-            let droppedItemTextRaw = match[0];
-            let droppedItemRegex = /{[^}]*?}/g;
-            let droppedItemTextRenamed = droppedItemTextRaw.replace(
-              droppedItemRegex,
-              `{${linkedDoc.name}}`
-            );
-            const clockImgSrc = type && value !== undefined
-              ? `systems/blades-in-the-dark/themes/${color}/${type}clock_${value}.svg`
-              : linkedDoc.img;
-            doc.innerHTML = `<img src="${clockImgSrc}" class="clockImage" data-uuid="${match[2]}" />
-                <br/> 
-                ${droppedItemTextRenamed}`;
-            // ${match[0]}`;
-            // doc.innerHTML = `<img src="${linkedDoc.img}" class="clockImage" data-uuid="${match[2]}" />
-            //   <br/>
-            //   ${match[0]}`;
-            return doc;
-          } else return false;
-        },
-      },
-    ]);
+    // Set up global event delegation for clock interactivity
+    // This enables clocks to work in journals, chat, and other contexts
+    setupGlobalClockHandlers();
+  });
+
+  // Bake clock state into chat messages at creation time to preserve historical values
+  // This runs BEFORE the message is saved, so the snapshot is permanent
+  Hooks.on("preCreateChatMessage", async (message, data, options, userId) => {
+    let content = message.content || "";
+
+    // Find @UUID references to actors
+    const uuidPattern = /@UUID\[([^\]]+)\]\{([^}]*)\}/g;
+    let match;
+    let newContent = content;
+
+    while ((match = uuidPattern.exec(content)) !== null) {
+      try {
+        const uuid = match[1];
+        const doc = await fromUuid(uuid);
+
+        if (!doc || (doc.type !== "🕛 clock" && doc.type !== "clock")) continue;
+
+        // Capture current clock state
+        const type = doc.system?.type ?? 4;
+        const value = doc.system?.value ?? 0;
+        const color = doc.system?.theme ?? "black";
+
+        // Replace @UUID with a data-enriched version that includes the snapshot
+        // We'll use a custom attribute to store the value at creation time
+        const snapshotMarker = `@UUID[${uuid}]{${match[2]}|snapshot:${value}}`;
+        newContent = newContent.replace(match[0], snapshotMarker);
+      } catch (e) {
+        // Ignore resolution errors
+      }
+    }
+
+    if (newContent !== content) {
+      message.updateSource({ content: newContent });
+    }
+  });
+
+  // Post-process rendered content to replace clock actor links with clock visualizations
+  // This runs AFTER Foundry's built-in @UUID enricher has created content-link elements
+  Hooks.on("renderChatMessage", async (message, html, data) => {
+    const container = html[0] || html;
+    // Pass the message content to extract snapshot values
+    if (container) await replaceClockLinks(container, message.content);
+  });
+
+  // Also process journals and other sheets that might contain clock links
+  // V12 and earlier
+  Hooks.on("renderJournalSheet", async (app, html, data) => {
+    console.log("[BITD-ALT] renderJournalSheet fired", app.constructor.name);
+    const container = html[0] || html;
+    if (container) await replaceClockLinks(container);
+  });
+
+  Hooks.on("renderJournalPageSheet", async (app, html, data) => {
+    console.log("[BITD-ALT] renderJournalPageSheet fired", app.constructor.name);
+    const container = html[0] || html;
+    if (container) await replaceClockLinks(container);
+  });
+
+  // V11+ uses JournalTextPageSheet for text pages
+  Hooks.on("renderJournalTextPageSheet", async (app, html, data) => {
+    console.log("[BITD-ALT] renderJournalTextPageSheet fired", app.constructor.name);
+    const container = html[0] || html;
+    if (container) await replaceClockLinks(container);
+  });
+
+  // V13+ uses ApplicationV2 - the hook name format is different
+  // Generic hook for ALL ApplicationV2 renders
+  // Note: Don't await to avoid blocking the render chain
+  Hooks.on("renderApplicationV2", (app, html, data) => {
+    // Check if this is a journal-related application
+    const className = app.constructor.name;
+    if (className.includes("Journal") || app.document?.documentName === "JournalEntry") {
+      console.log("[BITD-ALT] renderApplicationV2 (Journal) fired", className);
+      const container = html instanceof HTMLElement ? html : (html[0] || html);
+      if (container) replaceClockLinks(container); // Fire and forget
+    }
+  });
+
+  // V13+ DocumentSheetV2 for journal entries
+  Hooks.on("renderDocumentSheetV2", (app, html, data) => {
+    if (app.document?.documentName === "JournalEntry" || app.document?.documentName === "JournalEntryPage") {
+      console.log("[BITD-ALT] renderDocumentSheetV2 (Journal) fired", app.constructor.name);
+      const container = html instanceof HTMLElement ? html : (html[0] || html);
+      if (container) replaceClockLinks(container); // Fire and forget
+    }
+  });
+
+  // Process actor sheets (for Notes tab)
+  Hooks.on("renderActorSheet", async (app, html, data) => {
+    const container = html[0] || html;
+    if (container) await replaceClockLinks(container);
+  });
+
+  // Process crew sheets (for Notes tab)  
+  Hooks.on("renderBladesCrewSheet", async (app, html, data) => {
+    const container = html[0] || html;
+    if (container) await replaceClockLinks(container);
   });
   //why isn't sheet showing up in update hook?
 
@@ -105,4 +175,181 @@ export async function registerHooks() {
     }
   });
   return true;
+}
+
+/**
+ * Find content-link elements pointing to clock actors and replace them with clock displays.
+ * This runs after Foundry's built-in @UUID enricher has processed the text.
+ * @param {HTMLElement} container - The container to search for clock links
+ * @param {string} [messageContent] - Optional raw message content to extract snapshot values from
+ */
+async function replaceClockLinks(container, messageContent = null) {
+  if (!container) return;
+
+  // Parse snapshot values from message content if provided
+  // Format: @UUID[Actor.xxx]{name|snapshot:value}
+  const snapshotValues = new Map();
+  if (messageContent) {
+    const snapshotPattern = /@UUID\[([^\]]+)\]\{[^|]*\|snapshot:(\d+)\}/g;
+    let match;
+    while ((match = snapshotPattern.exec(messageContent)) !== null) {
+      snapshotValues.set(match[1], parseInt(match[2]));
+    }
+  }
+
+  // Find all content-link anchors that might be clock actors
+  const links = container.querySelectorAll('a.content-link[data-type="Actor"]');
+
+  for (const link of links) {
+    const uuid = link.dataset.uuid;
+    if (!uuid) continue;
+
+    try {
+      const doc = await fromUuid(uuid);
+      if (!doc) continue;
+
+      // Check if it's a clock actor
+      if (doc.type !== "🕛 clock" && doc.type !== "clock") continue;
+
+      // Generate clock HTML with full interactive structure
+      const type = doc.system?.type ?? 4;
+      // Use snapshot value if available, otherwise use current value
+      const value = snapshotValues.has(uuid) ? snapshotValues.get(uuid) : (doc.system?.value ?? 0);
+      const color = doc.system?.theme ?? "black";
+      const uniq_id = doc.id;
+      const renderInstance = foundry.utils.randomID();
+      const parameter_name = `system.value-${uniq_id}-${renderInstance}`;
+
+      const clockDiv = document.createElement("div");
+      clockDiv.className = "blades-clock-container linkedClock";
+      clockDiv.dataset.uuid = uuid;
+      // Mark if this is a historical snapshot (non-interactive in chat)
+      if (snapshotValues.has(uuid)) {
+        clockDiv.dataset.snapshot = "true";
+      }
+
+      // Build HTML with radio inputs and labels for segment clicking
+      let clockHtml = `<div id="blades-clock-${uniq_id}-${renderInstance}" 
+           class="blades-clock clock-${type} clock-${type}-${value}" 
+           style="background-image:url('systems/blades-in-the-dark/themes/${color}/${type}clock_${value}.svg'); width: 100px; height: 100px;"
+           data-uuid="${uuid}">`;
+
+      // Zero input (hidden)
+      const zero_checked = (parseInt(value) === 0) ? 'checked' : '';
+      clockHtml += `<input type="radio" value="0" id="clock-0-${uniq_id}-${renderInstance}" data-dType="String" name="${parameter_name}" ${zero_checked}>`;
+
+      // Segment inputs and labels
+      for (let i = 1; i <= parseInt(type); i++) {
+        const checked = (parseInt(value) === i) ? 'checked' : '';
+        clockHtml += `<input type="radio" value="${i}" id="clock-${i}-${uniq_id}-${renderInstance}" data-dType="String" name="${parameter_name}" ${checked}>`;
+        clockHtml += `<label class="radio-toggle" for="clock-${i}-${uniq_id}-${renderInstance}"></label>`;
+      }
+
+      clockHtml += `</div>`;
+      clockHtml += `<br/><span class="clock-name">${doc.name}</span>`;
+
+      clockDiv.innerHTML = clockHtml;
+
+      // Replace the link with the clock
+      link.replaceWith(clockDiv);
+
+    } catch (e) {
+      console.warn("[BITD-ALT] Error processing clock link:", e);
+    }
+  }
+}
+
+/**
+ * Set up global event handlers for clock interactivity.
+ * Uses event delegation on document.body to handle clocks in journals and other contexts.
+ */
+function setupGlobalClockHandlers() {
+  const $body = $(document.body);
+
+  // Handle label clicks on clocks (for segment selection)
+  $body.on("click", ".blades-clock label.radio-toggle", async (e) => {
+    // Skip if this is a snapshot (historical chat clock)
+    if ($(e.currentTarget).closest('[data-snapshot="true"]').length) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const label = e.currentTarget;
+    const forId = label.getAttribute("for");
+    if (!forId) return;
+
+    const input = document.getElementById(forId);
+    if (!input || input.type !== "radio") return;
+
+    input.checked = true;
+
+    const el = label.closest('.blades-clock');
+    if (!el) return;
+
+    const uuid = el.dataset.uuid || el.closest('[data-uuid]')?.dataset.uuid;
+    if (!uuid) return;
+
+    const newValue = parseInt(input.value);
+
+    try {
+      const doc = await fromUuid(uuid);
+      if (!doc) return;
+
+      // Update the clock visually
+      const type = doc.system?.type ?? 4;
+      const color = doc.system?.theme ?? "black";
+      const newSrc = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
+      el.style.backgroundImage = `url('${newSrc}')`;
+
+      // Update the class
+      el.className = el.className.replace(/clock-\d+-\d+/, `clock-${type}-${newValue}`);
+
+      // Save to database
+      await doc.update({ "system.value": newValue }, { render: false });
+    } catch (err) {
+      console.warn("[BITD-ALT] Error updating clock:", err);
+    }
+  });
+
+  // Handle right-click to decrement
+  $body.on("contextmenu", ".blades-clock", async (e) => {
+    // Skip if this is a snapshot (historical chat clock)
+    if ($(e.currentTarget).closest('[data-snapshot="true"]').length) return;
+
+    e.preventDefault();
+
+    const el = e.currentTarget;
+    const uuid = el.dataset.uuid || el.closest('[data-uuid]')?.dataset.uuid;
+    if (!uuid) return;
+
+    try {
+      const doc = await fromUuid(uuid);
+      if (!doc) return;
+
+      const currentValue = doc.system?.value ?? 0;
+      const newValue = Math.max(0, currentValue - 1);
+
+      if (newValue === currentValue) return;
+
+      // Update the clock visually
+      const type = doc.system?.type ?? 4;
+      const color = doc.system?.theme ?? "black";
+      const newSrc = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
+      el.style.backgroundImage = `url('${newSrc}')`;
+
+      // Update the class
+      el.className = el.className.replace(/clock-\d+-\d+/, `clock-${type}-${newValue}`);
+
+      // Update checked radio
+      const inputs = el.querySelectorAll('input[type="radio"]');
+      inputs.forEach(inp => inp.checked = parseInt(inp.value) === newValue);
+
+      // Save to database
+      await doc.update({ "system.value": newValue }, { render: false });
+    } catch (err) {
+      console.warn("[BITD-ALT] Error updating clock:", err);
+    }
+  });
+
+  console.log("[BITD-ALT] Global clock handlers initialized");
 }

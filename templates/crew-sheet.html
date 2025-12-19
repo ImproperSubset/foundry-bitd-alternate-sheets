@@ -1,4 +1,4 @@
-<form class="{{cssClass}} actor-sheet blades-alt crew actor" autocomplete="off">
+<form class="{{cssClass}} actor-sheet blades-alt crew actor" autocomplete="off" data-uuid="{{actor.uuid}}">
   <div class="sheet-wrapper {{#if allow_edit}}allow-edit{{/if}}">
 
     <div class="crew-upper-wrapper">
@@ -18,9 +18,10 @@
                     <a class="down-exp-clock" data-tooltip="{{localize 'BITD.MinusXP'}}"><i
                         class="fas fa-caret-down"></i></a>
                   </div>
-                  <img
-                    src="systems/blades-in-the-dark/styles/assets/progressclocks-svg/Progress Clock {{system.exp_clock.size}}-{{system.exp_clock.value}}.svg"
-                    height="40" width="40" style="border: none;" />
+                  <div style="width: 40px; height: 40px; position: relative;">
+                    {{{blades-clock "system.exp_clock.value" system.exp_clock.size system.exp_clock.value (concat _id
+                    "-exp") }}}
+                  </div>
                 </div>
                 {{else}}
                 {{#multiboxes system.experience}}
@@ -288,7 +289,9 @@
         </section>
       </div>
 
-      <div id="crew-{{_id}}-contacts" class="tab flex-vertical section-block {{#if (lookup collapsedSections 'acquaintances')}}collapsed{{/if}}" data-tab="contacts" data-section-key="acquaintances">
+      <div id="crew-{{_id}}-contacts"
+        class="tab flex-vertical section-block {{#if (lookup collapsedSections 'acquaintances')}}collapsed{{/if}}"
+        data-tab="contacts" data-section-key="acquaintances">
         <div class="flex-horizontal contacts-actions">
           <p>
             <a class="import-contacts" data-tooltip="{{localize 'BITD.ImportPlaybookContacts'}}"><i
@@ -297,21 +300,22 @@
           </p>
         </div>
         {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
-          label=(localize "BITD.Contacts")
-          flex=false
-          showFilter=true
-          isFiltered=showFilteredAcquaintances
-          filterTarget="acquaintances"
-          sectionKey="acquaintances"
-          isCollapsed=(lookup collapsedSections 'acquaintances')
-          showAdd=false
+        label=(localize "BITD.Contacts")
+        flex=false
+        showFilter=true
+        isFiltered=showFilteredAcquaintances
+        filterTarget="acquaintances"
+        sectionKey="acquaintances"
+        isCollapsed=(lookup collapsedSections 'acquaintances')
+        showAdd=false
         }}
         <div class="section-body">
           {{#if display_acquaintances}}
           {{#each display_acquaintances as |item id|}}
           <div class="item flex-horizontal" data-item-id="{{item.id}}" data-item-type="{{item.type}}">
             <div class="acquaintance" data-acquaintance="{{this.id}}">
-              {{> "modules/bitd-alternate-sheets/templates/parts/acquaintance-body.html" id=this.id name=this.name standing=this.standing description_short=this.description_short}}
+              {{> "modules/bitd-alternate-sheets/templates/parts/acquaintance-body.html" id=this.id name=this.name
+              standing=this.standing description_short=this.description_short}}
             </div>
             <a class="acquaintance-delete" data-tooltip="{{localize 'BITD.TitleDeleteItem'}}"><i
                 class="fas fa-trash"></i></a>

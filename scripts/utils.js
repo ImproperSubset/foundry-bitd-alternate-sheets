@@ -493,62 +493,230 @@ export class Utils {
     const $root = root instanceof HTMLElement ? $(root) : root;
     const rerender = typeof renderCallback === "function" ? renderCallback : () => { };
     let pending = false;
-    $root.find("img.clockImage").on("click", async (e) => {
-      const uuid = e.currentTarget.dataset.uuid;
-      if (!uuid) return;
-      const entity = await fromUuid(uuid);
-      if (!entity) return;
-      const currentValue = Number(entity.system?.value) || 0;
-      const currentMax = Number(entity.system?.type) || 0;
-      if (currentValue < currentMax) {
-        if (pending) return;
-        pending = true;
-        try {
-          await Profiler.time(
-            "clockIncrement",
-            async () => {
-              await entity.update({ "system.value": currentValue + 1 }, { render: false });
-              rerender(false);
-            },
-            {
-              uuid,
-              parentId: entity.parent?.id ?? null,
-              targetValue: currentValue + 1,
-            }
-          );
-        } finally {
-          pending = false;
-        }
-      }
-    });
-    $root.find("img.clockImage").on("contextmenu", async (e) => {
+
+    // Helper to perform the optimistic update
+    const performUpdate = async (e, mode) => {
+      // mode: 'increment', 'decrement', or 'set'
+      // If 'set', e.target should be the input with the new value
+
       e.preventDefault();
-      const uuid = e.currentTarget.dataset.uuid;
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      const el = e.currentTarget; // The container (img or div)
+      const isImg = el.tagName === "IMG";
+      let src = "";
+
+      // Extract URL
+      if (isImg) {
+        src = el.src;
+      } else {
+        // background-image: url("...")
+        const bg = el.style.backgroundImage;
+        if (bg) {
+          const urlMatch = bg.match(/url\(['"]?(.*?)['"]?\)/);
+          if (urlMatch) src = urlMatch[1];
+        }
+      }
+
+      if (!src) return;
+
+      // Parse Filename
+      let match = src.match(/(\d+)-(\d+)\.[^.]+$/);
+      let patternType = "hyphen";
+
+      if (!match) {
+        match = src.match(/(\d+)clock_(\d+)\.[^.]+$/);
+        patternType = "clock_underscore";
+      }
+
+      let currentMax = 0;
+      let currentValue = 0;
+      let derivedNewValue = null;
+
+      if (match) {
+        currentMax = parseInt(match[1]);
+        currentValue = parseInt(match[2]);
+
+        if (mode === 'increment') {
+          if (currentValue < currentMax) derivedNewValue = currentValue + 1;
+        } else if (mode === 'decrement') {
+          if (currentValue > 0) derivedNewValue = currentValue - 1;
+        } else if (mode === 'set') {
+          // For 'set', we expect the value from the triggered input
+          // Note: 'e' here is the event from the *input*, but we need the container 'el' for visual patching
+          // This structure requires careful event binding passing.
+          // Actually, let's pass the 'newValue' explicitly if mode is 'set'
+        }
+      }
+
+      // ... Logic continues ...
+    };
+
+    // We need different handlers for the different interaction types
+
+    // 1. Generic Handler for Increment/Decrement (Images & Right Clicks)
+    const handleStep = async (e, increment) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      const el = e.currentTarget;
+      const isImg = el.tagName === "IMG";
+      let src = isImg ? el.src : (el.style.backgroundImage.match(/url\(['"]?(.*?)['"]?\)/)?.[1] || "");
+      if (!src) return;
+
+      let match = src.match(/(\d+)-(\d+)\.[^.]+$/) || src.match(/(\d+)clock_(\d+)\.[^.]+$/);
+      let patternType = src.match(/(\d+)-(\d+)\.[^.]+$/) ? "hyphen" : "clock_underscore";
+
+      if (!match) return;
+
+      let currentMax = parseInt(match[1]);
+      let currentValue = parseInt(match[2]);
+      let newValue = increment ? (currentValue + 1) : (currentValue - 1);
+
+      // Bounds check
+      if (increment && newValue > currentMax) return;
+      if (!increment && newValue < 0) return;
+
+      await applyUpdate(el, src, currentMax, currentValue, newValue, patternType, isImg);
+    };
+
+    // 2. Specific Handler for Radio Inputs (Segment clicking)
+    const handleRadioChange = async (e) => {
+      // Don't prevent default, we want the radio to check visually
+      // But we DO want to trigger the optimized feedback and DB update
+
+      const input = e.target;
+      // e.currentTarget is the input since we bound to ".blades-clock input[type='radio']"
+      // We need to find the .blades-clock container
+      const el = input.closest('.blades-clock');
+      if (!el) return;
+
+      const newValue = parseInt(input.value);
+
+      const bg = el.style.backgroundImage;
+      let src = (bg.match(/url\(['"]?(.*?)['"]?\)/)?.[1] || "");
+      if (!src) return;
+
+      let match = src.match(/(\d+)-(\d+)\.[^.]+$/) || src.match(/(\d+)clock_(\d+)\.[^.]+$/);
+      let patternType = src.match(/(\d+)-(\d+)\.[^.]+$/) ? "hyphen" : "clock_underscore";
+
+      if (!match) return;
+
+      let currentMax = parseInt(match[1]);
+      let currentValue = parseInt(match[2]);
+
+      await applyUpdate(el, src, currentMax, currentValue, newValue, patternType, false);
+    };
+
+    // Shared Update Logic
+    const applyUpdate = async (el, src, currentMax, currentValue, newValue, patternType, isImg) => {
+      let search = "";
+      let replacement = "";
+
+      if (patternType === "hyphen") {
+        search = `${currentMax}-${currentValue}.`;
+        replacement = `${currentMax}-${newValue}.`;
+      } else if (patternType === "clock_underscore") {
+        search = `${currentMax}clock_${currentValue}.`;
+        replacement = `${currentMax}clock_${newValue}.`;
+      }
+
+      const idx = src.lastIndexOf(search);
+      if (idx !== -1) {
+        const newSrc = src.substring(0, idx) + replacement + src.substring(idx + search.length);
+        if (isImg) {
+          el.src = newSrc;
+        } else {
+          el.style.backgroundImage = `url('${newSrc}')`;
+          const classRegex = new RegExp(`clock-${currentMax}-${currentValue}`);
+          el.className = el.className.replace(classRegex, `clock-${currentMax}-${newValue}`);
+        }
+      }
+
+      const uuid = el.dataset.uuid || $(el).closest('[data-uuid]').data('uuid');
       if (!uuid) return;
       const entity = await fromUuid(uuid);
       if (!entity) return;
-      const currentValue = Number(entity.system?.value) || 0;
-      if (currentValue > 0) {
-        if (pending) return;
-        pending = true;
-        try {
-          await Profiler.time(
-            "clockDecrement",
-            async () => {
-              await entity.update({ "system.value": currentValue - 1 }, { render: false });
-              rerender(false);
-            },
-            {
-              uuid,
-              parentId: entity.parent?.id ?? null,
-              targetValue: currentValue - 1,
-            }
-          );
-        } finally {
-          pending = false;
-        }
+
+      const isHealing = $(el).closest('.healing-clock').length > 0;
+      let updateKey = "system.value";
+      if (isHealing) updateKey = "system.healing_clock.value";
+
+      if (pending) return;
+      pending = true;
+
+      try {
+        await Profiler.time(
+          "clockUpdate",
+          async () => {
+            await entity.update({ [updateKey]: newValue }, { render: false });
+            // rerender(false);
+          },
+          { uuid, parentId: entity.parent?.id ?? null, targetValue: newValue }
+        );
+      } finally {
+        pending = false;
       }
+    };
+
+    // BINDINGS
+
+    // Use delegation on $root to support content that might be injected (enrichers) or replaced
+    // and to ensure we catch events bubbling up.
+
+    // Legacy images: Click to increment, Context to decrement
+    $root.off("click contextmenu", "img.clockImage"); // Clear old bindings just in case
+    $root.on("click", "img.clockImage", (e) => handleStep(e, true));
+    $root.on("contextmenu", "img.clockImage", (e) => handleStep(e, false));
+
+    // New Divs: Change on input to set specific value, Context to decrement
+    $root.off("change contextmenu click", ".blades-clock");
+    $root.off("click", ".blades-clock label.radio-toggle");
+
+    // Radio button changes (fires when radio is programmatically or natively changed)
+    $root.on("change", ".blades-clock input[type='radio']", handleRadioChange);
+
+    // Direct click on labels - needed because ProseMirror may intercept native label->radio behavior
+    $root.on("click", ".blades-clock label.radio-toggle", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const label = e.currentTarget;
+      const forId = label.getAttribute("for");
+      if (!forId) return;
+
+      // Find the associated radio input
+      const input = document.getElementById(forId);
+      if (!input || input.type !== "radio") return;
+
+      // Check the radio and manually trigger our handler
+      input.checked = true;
+
+      // Build a synthetic event-like object for handleRadioChange
+      const el = label.closest('.blades-clock');
+      if (!el) return;
+
+      const newValue = parseInt(input.value);
+      const bg = el.style.backgroundImage;
+      let src = (bg.match(/url\(['"]?(.*?)['"]?\)/)?.[1] || "");
+      if (!src) return;
+
+      let match = src.match(/(\d+)-(\d+)\.[^.]+$/) || src.match(/(\d+)clock_(\d+)\.[^.]+$/);
+      let patternType = src.match(/(\d+)-(\d+)\.[^.]+$/) ? "hyphen" : "clock_underscore";
+
+      if (!match) return;
+
+      let currentMax = parseInt(match[1]);
+      let currentValue = parseInt(match[2]);
+
+      applyUpdate(el, src, currentMax, currentValue, newValue, patternType, false);
     });
+
+    // Right click on the container OR the labels
+    $root.on("contextmenu", ".blades-clock", (e) => handleStep(e, false));
+
   }
 
   /**
