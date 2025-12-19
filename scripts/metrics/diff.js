@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+/**
+ * Compare two metrics snapshots and print deltas.
+ * Usage: node scripts/metrics/diff.js --baseline reports/metrics/snapshots/before.json --current reports/metrics/snapshots/after.json
+ */
+const fs = require("fs");
+const path = require("path");
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const params = {};
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === "--baseline") {
+      params.baseline = args[i + 1];
+      i += 1;
+    } else if (args[i] === "--current") {
+      params.current = args[i + 1];
+      i += 1;
+    }
+  }
+  if (!params.baseline || !params.current) {
+    throw new Error("Usage: node scripts/metrics/diff.js --baseline <file> --current <file>");
+  }
+  return params;
+}
+
+function readSnapshot(p) {
+  const full = path.resolve(process.cwd(), p);
+  return JSON.parse(fs.readFileSync(full, "utf8"));
+}
+
+function delta(a, b) {
+  if (typeof a === "number" && typeof b === "number") return b - a;
+  return null;
+}
+
+function main() {
+  const { baseline, current } = parseArgs();
+  const base = readSnapshot(baseline);
+  const cur = readSnapshot(current);
+
+  const summary = [];
+  summary.push(`Baseline: ${baseline}`);
+  summary.push(`Current:  ${current}`);
+
+  // LOC summary
+  const baseLoc = base.cloc?.languages || {};
+  const curLoc = cur.cloc?.languages || {};
+  const langs = new Set([...Object.keys(baseLoc), ...Object.keys(curLoc)]);
+  summary.push("\nLOC (code lines by language):");
+  langs.forEach((lang) => {
+    const a = baseLoc[lang]?.code || 0;
+    const b = curLoc[lang]?.code || 0;
+    const d = delta(a, b);
+    summary.push(`  ${lang.padEnd(12)} ${a.toString().padStart(6)} -> ${b.toString().padStart(6)} (Δ ${d >= 0 ? "+" : ""}${d})`);
+  });
+
+  // Duplication
+  const aDup = base.jscpd?.percentage || 0;
+  const bDup = cur.jscpd?.percentage || 0;
+  const dDup = delta(aDup, bDup);
+  summary.push(`\nDuplication (% lines): ${aDup.toFixed(2)} -> ${bDup.toFixed(2)} (Δ ${dDup >= 0 ? "+" : ""}${dDup.toFixed(2)})`);
+
+  // Complexity
+  const aCx = base.complexity?.maxCyclomatic || 0;
+  const bCx = cur.complexity?.maxCyclomatic || 0;
+  const dCx = delta(aCx, bCx);
+  summary.push(`Max cyclomatic: ${aCx} -> ${bCx} (Δ ${dCx >= 0 ? "+" : ""}${dCx})`);
+
+  console.log(summary.join("\n"));
+}
+
+if (require.main === module) {
+  main();
+}
