@@ -1204,42 +1204,25 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     this.addTermTooltips(html);
 
-    html.find('[data-action="toggle-filter"]').off("click").on("click", (ev) => {
-      ev.preventDefault();
-      const target = ev.currentTarget?.dataset?.filterTarget;
-      if (target === "abilities") {
+    Utils.bindFilterToggles(html, {
+      abilities: () => {
         const next = !this.showFilteredAbilities;
         this.setLocalProp("showFilteredAbilities", next);
         Utils.saveUiState(this, { showFilteredAbilities: next });
-      } else if (target === "items") {
+      },
+      items: () => {
         const next = !this.showFilteredItems;
         this.setLocalProp("showFilteredItems", next);
         Utils.saveUiState(this, { showFilteredItems: next });
-      } else if (target === "acquaintances") {
+      },
+      acquaintances: () => {
         const next = !this.showFilteredAcquaintances;
         this.setLocalProp("showFilteredAcquaintances", next);
         Utils.saveUiState(this, { showFilteredAcquaintances: next });
-      }
+      },
     });
 
-    html.find('[data-action="toggle-section-collapse"]').off("click").on("click", (ev) => {
-      ev.preventDefault();
-      const sectionKey = ev.currentTarget?.dataset?.sectionKey;
-      if (!sectionKey) return;
-      const section = ev.currentTarget.closest(".section-block");
-      if (!section) return;
-      const icon = ev.currentTarget.querySelector("i");
-      const isCollapsed = section.classList.toggle("collapsed");
-      if (icon) {
-        icon.classList.toggle("fa-caret-right", isCollapsed);
-        icon.classList.toggle("fa-caret-down", !isCollapsed);
-      }
-      this.collapsedSections = {
-        ...(this.collapsedSections || {}),
-        [sectionKey]: isCollapsed,
-      };
-      Utils.saveUiState(this, { collapsedSections: this.collapsedSections });
-    });
+    Utils.bindCollapseToggles(html, this);
 
     // Everything below here is only needed if the sheet is editable
     if (!this.options.editable) return;

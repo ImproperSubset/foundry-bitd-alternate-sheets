@@ -213,35 +213,16 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    html.find('[data-action="toggle-filter"]').off("click").on("click", (ev) => {
-      ev.preventDefault();
-      const target = ev.currentTarget?.dataset?.filterTarget;
-      if (target === "acquaintances") {
+    Utils.bindFilterToggles(html, {
+      acquaintances: () => {
         const next = !this.showFilteredAcquaintances;
         this.showFilteredAcquaintances = next;
         Utils.saveUiState(this, { showFilteredAcquaintances: next });
         this.render(false);
-      }
+      },
     });
 
-    html.find('[data-action="toggle-section-collapse"]').off("click").on("click", (ev) => {
-      ev.preventDefault();
-      const sectionKey = ev.currentTarget?.dataset?.sectionKey;
-      if (!sectionKey) return;
-      const section = ev.currentTarget.closest(".section-block");
-      if (!section) return;
-      const icon = ev.currentTarget.querySelector("i");
-      const isCollapsed = section.classList.toggle("collapsed");
-      if (icon) {
-        icon.classList.toggle("fa-caret-right", isCollapsed);
-        icon.classList.toggle("fa-caret-down", !isCollapsed);
-      }
-      this.collapsedSections = {
-        ...(this.collapsedSections || {}),
-        [sectionKey]: isCollapsed,
-      };
-      Utils.saveUiState(this, { collapsedSections: this.collapsedSections });
-    });
+    Utils.bindCollapseToggles(html, this);
 
     if (!this.options.editable) return;
 

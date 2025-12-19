@@ -1191,4 +1191,46 @@ export class Utils {
       }
     });
   }
+
+  /**
+   * Bind toggle-filter click handlers with provided per-target callbacks.
+   * @param {JQuery} html
+   * @param {Object<string, Function>} handlers
+   */
+  static bindFilterToggles(html, handlers = {}) {
+    if (!html || typeof html.find !== "function") return;
+    html.find('[data-action="toggle-filter"]').off("click").on("click", (ev) => {
+      ev.preventDefault();
+      const target = ev.currentTarget?.dataset?.filterTarget;
+      if (!target || typeof handlers[target] !== "function") return;
+      handlers[target](ev);
+    });
+  }
+
+  /**
+   * Bind collapse toggles for sections and persist UI state.
+   * @param {JQuery} html
+   * @param {DocumentSheet} sheet
+   */
+  static bindCollapseToggles(html, sheet) {
+    if (!html || typeof html.find !== "function" || !sheet) return;
+    html.find('[data-action="toggle-section-collapse"]').off("click").on("click", (ev) => {
+      ev.preventDefault();
+      const sectionKey = ev.currentTarget?.dataset?.sectionKey;
+      if (!sectionKey) return;
+      const section = ev.currentTarget.closest(".section-block");
+      if (!section) return;
+      const icon = ev.currentTarget.querySelector("i");
+      const isCollapsed = section.classList.toggle("collapsed");
+      if (icon) {
+        icon.classList.toggle("fa-caret-right", isCollapsed);
+        icon.classList.toggle("fa-caret-down", !isCollapsed);
+      }
+      sheet.collapsedSections = {
+        ...(sheet.collapsedSections || {}),
+        [sectionKey]: isCollapsed,
+      };
+      Utils.saveUiState(sheet, { collapsedSections: sheet.collapsedSections });
+    });
+  }
 }
