@@ -34,16 +34,8 @@ function delta(a, b) {
   return null;
 }
 
-function main() {
-  const { baseline, current } = parseArgs();
-  const base = readSnapshot(baseline);
-  const cur = readSnapshot(current);
-
+function summarizeLoc(base, cur) {
   const summary = [];
-  summary.push(`Baseline: ${baseline}`);
-  summary.push(`Current:  ${current}`);
-
-  // LOC summary
   const baseLoc = base.cloc?.languages || {};
   const curLoc = cur.cloc?.languages || {};
   const langs = new Set([...Object.keys(baseLoc), ...Object.keys(curLoc)]);
@@ -52,44 +44,81 @@ function main() {
     const a = baseLoc[lang]?.code || 0;
     const b = curLoc[lang]?.code || 0;
     const d = delta(a, b);
-    summary.push(`  ${lang.padEnd(12)} ${a.toString().padStart(6)} -> ${b.toString().padStart(6)} (Δ ${d >= 0 ? "+" : ""}${d})`);
+    summary.push(
+      `  ${lang.padEnd(12)} ${a.toString().padStart(6)} -> ${b
+        .toString()
+        .padStart(6)} (Δ ${d >= 0 ? "+" : ""}${d})`
+    );
   });
+  return summary;
+}
 
-  // Duplication
+function summarizeDuplication(base, cur) {
   const aDup = base.jscpd?.percentage || 0;
   const bDup = cur.jscpd?.percentage || 0;
   const dDup = delta(aDup, bDup);
-  summary.push(`\nDuplication (% lines): ${aDup.toFixed(2)} -> ${bDup.toFixed(2)} (Δ ${dDup >= 0 ? "+" : ""}${dDup.toFixed(2)})`);
+  return [
+    `\nDuplication (% lines): ${aDup.toFixed(2)} -> ${bDup.toFixed(
+      2
+    )} (Δ ${dDup >= 0 ? "+" : ""}${dDup.toFixed(2)})`,
+  ];
+}
 
-  // Complexity
+function summarizeComplexity(base, cur) {
   const baseCx = base.complexity || {};
   const curCx = cur.complexity || {};
   if (baseCx.status === "ok" && curCx.status === "ok") {
     const aCx = baseCx.maxCyclomatic || 0;
     const bCx = curCx.maxCyclomatic || 0;
     const dCx = delta(aCx, bCx);
-    summary.push(`Max cyclomatic: ${aCx} -> ${bCx} (Δ ${dCx >= 0 ? "+" : ""}${dCx})`);
-  } else {
-    summary.push(`Complexity status: ${baseCx.status || "n/a"} -> ${curCx.status || "n/a"}`);
-    if (curCx.error) summary.push(`Current complexity error: ${curCx.error}`);
+    return [`Max cyclomatic: ${aCx} -> ${bCx} (Δ ${dCx >= 0 ? "+" : ""}${dCx})`];
   }
 
-  // Style metrics
+  const lines = [`Complexity status: ${baseCx.status || "n/a"} -> ${curCx.status || "n/a"}`];
+  if (curCx.error) lines.push(`Current complexity error: ${curCx.error}`);
+  return lines;
+}
+
+function summarizeStyles(base, cur) {
   const aScss = base.styleMetrics?.scssLines || 0;
   const bScss = cur.styleMetrics?.scssLines || 0;
   const dScss = delta(aScss, bScss);
   const aCss = base.styleMetrics?.cssBytes || 0;
   const bCss = cur.styleMetrics?.cssBytes || 0;
   const dCss = delta(aCss, bCss);
-  summary.push(`SCSS lines: ${aScss} -> ${bScss} (Δ ${dScss >= 0 ? "+" : ""}${dScss})`);
-  summary.push(`CSS bytes:  ${aCss} -> ${bCss} (Δ ${dCss >= 0 ? "+" : ""}${dCss})`);
+  return [
+    `SCSS lines: ${aScss} -> ${bScss} (Δ ${dScss >= 0 ? "+" : ""}${dScss})`,
+    `CSS bytes:  ${aCss} -> ${bCss} (Δ ${dCss >= 0 ? "+" : ""}${dCss})`,
+  ];
+}
 
-  // DRY counters
+function summarizeDryCounters(base, cur) {
   const aHbsCalls = base.dryCounters?.hbsPartialCalls || 0;
   const bHbsCalls = cur.dryCounters?.hbsPartialCalls || 0;
   const dHbsCalls = delta(aHbsCalls, bHbsCalls);
-  summary.push(`Partial call sites: ${aHbsCalls} -> ${bHbsCalls} (Δ ${dHbsCalls >= 0 ? "+" : ""}${dHbsCalls})`);
+  return [
+    `Partial call sites: ${aHbsCalls} -> ${bHbsCalls} (Δ ${dHbsCalls >= 0 ? "+" : ""}${dHbsCalls})`,
+  ];
+}
 
+function buildSummary({ baseline, current, base, cur }) {
+  const summary = [];
+  summary.push(`Baseline: ${baseline}`);
+  summary.push(`Current:  ${current}`);
+  summary.push(...summarizeLoc(base, cur));
+  summary.push(...summarizeDuplication(base, cur));
+  summary.push(...summarizeComplexity(base, cur));
+  summary.push(...summarizeStyles(base, cur));
+  summary.push(...summarizeDryCounters(base, cur));
+  return summary;
+}
+
+function main() {
+  const { baseline, current } = parseArgs();
+  const base = readSnapshot(baseline);
+  const cur = readSnapshot(current);
+
+  const summary = buildSummary({ baseline, current, base, cur });
   console.log(summary.join("\n"));
 }
 
