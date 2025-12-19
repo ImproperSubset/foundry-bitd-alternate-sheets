@@ -1,7 +1,16 @@
 export const registerSystemSettings = function () {
+  game.settings.register("bitd-alternate-sheets", "populateFromWorld", {
+    name: "Include World Directory Entries",
+    hint: "Include Actors/Items saved in this world (the entries in the sidebar directories). Does not search Compendium Packs.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+
   game.settings.register("bitd-alternate-sheets", "populateFromCompendia", {
-    name: "Load Compendium Objects",
-    hint: "Include Compendium Playbooks, NPCs, Items, and Abilities When Auto-Populating Playbooks",
+    name: "Include Compendium Pack Entries",
+    hint: "Include Actors/Items from Compendium Packs when auto-populating. Finds compendium-only content.",
     scope: "world", // "world" = sync to db, "client" = local storage
     config: true, // false if you dont want it to show in module config
     type: Boolean, // Number, Boolean, String,
@@ -11,18 +20,9 @@ export const registerSystemSettings = function () {
     },
   });
 
-  game.settings.register("bitd-alternate-sheets", "populateFromWorld", {
-    name: "Load World Objects",
-    hint: "Include World (Custom) Playbooks, NPCs, Items, and Abilities When Auto-Populating Playbooks",
-    scope: "world",
-    config: true,
-    type: Boolean,
-    default: true,
-  });
-
   game.settings.register("bitd-alternate-sheets", "searchAllPacks", {
-    name: "Search All Compendiums",
-    hint: "When enabled, the sheet will scan ALL installed compendiums (not just system default) for matching items (Playbooks, NPCs, etc). This allows Custom Compendiums to work automatically but may affect performance.",
+    name: "Scan All Installed Compendium Packs",
+    hint: "Requires \"Include Compendium Pack Entries\". When off, scan only the system’s default packs. When on, scan all installed Actor/Item packs (may be slower).",
     scope: "world",
     config: true,
     type: Boolean,
