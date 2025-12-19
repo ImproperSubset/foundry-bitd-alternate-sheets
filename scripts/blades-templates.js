@@ -19,6 +19,7 @@ export const preloadHandlebarsTemplates = function () {
     "modules/bitd-alternate-sheets/templates/parts/item.html",
     "modules/bitd-alternate-sheets/templates/parts/item-list-section.html",
     "modules/bitd-alternate-sheets/templates/parts/item-header.html",
+    "modules/bitd-alternate-sheets/templates/parts/dock-section.html",
     "modules/bitd-alternate-sheets/templates/parts/crew-ability.html",
     "modules/bitd-alternate-sheets/templates/parts/crew-upgrade.html",
     "modules/bitd-alternate-sheets/templates/parts/turf-list.html",
