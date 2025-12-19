@@ -26,13 +26,6 @@
             </div>
             <div class="full-view">{{> "modules/bitd-alternate-sheets/templates/parts/load.html"}}</div>
           </div>
-          <div class="harm-box {{#if harm_open}}open{{/if}} pointer">
-            <div class="mini-view harm{{#if (or system.harm.light.one system.harm.light.two)}}-1{{/if}}{{#if
-              (or system.harm.medium.one system.harm.medium.two)}}-2{{/if}}{{#if system.harm.heavy.one}}-3{{/if}}">
-              <div class="placeholder"></div>
-            </div>
-            <div class="full-view">{{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}</div>
-          </div>
 
         </div>
         <div class="stress-trauma-box">
@@ -241,6 +234,25 @@
             </div>
 
             <div class="dock-column" data-dock-column="right">
+              <section class="dock-section" data-section-key="harm">
+                <section class="harm section-block {{#if (lookup collapsedSections 'harm')}}collapsed{{/if}}"
+                  data-section-key="harm">
+                  {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
+                  label=(localize "BITD.Harm")
+                  flex=false
+                  showFilter=false
+                  isFiltered=false
+                  filterTarget="harm"
+                  sectionKey="harm"
+                  isCollapsed=(lookup collapsedSections 'harm')
+                  showAdd=false
+                  dockable=true
+                  }}
+                  <div class="section-body">
+                    {{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}
+                  </div>
+                </section>
+              </section>
               <section class="dock-section" data-section-key="acquaintances">
                 <section
                   class="friends-rivals section-block {{#if (lookup collapsedSections 'acquaintances')}}collapsed{{/if}}"
