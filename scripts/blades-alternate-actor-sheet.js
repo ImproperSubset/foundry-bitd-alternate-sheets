@@ -879,46 +879,11 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
   async openItemChooser(filterPlaybook, itemScope = "") {
     try {
-      const scope = itemScope || (filterPlaybook ? "playbook" : "general");
-      const playbookNameRaw =
-        scope === "playbook"
-          ? (filterPlaybook || this.actor?.items?.find((i) => i.type === "class")?.name || this.actor?.system?.playbook || "")
-          : "";
-      const playbookKey = (playbookNameRaw || "").trim().toLowerCase();
-      const isGeneral = scope !== "playbook";
-
-      let filtered = [];
-      if (isGeneral) {
-        // General list: classless items only
-        const virtualList = await Utils.getVirtualListOfItems(
-          "item",
-          { actor: this.actor },
-          true,
-          "",
-          true,
-          true
-        );
-        const scoped = virtualList.filter((i) => {
-          const itemClassRaw = i.system?.class || i.system?.associated_class || "";
-          const itemClass = (itemClassRaw || "").trim();
-          return !itemClass;
-        });
-        filtered = Utils.filterItemsForDuplicatesOnActor(scoped, "item", this.actor, true);
-      } else {
-        // Special items: all classed items from any playbook
-        const allItems = await Utils.getSourcedItemsByType("item");
-        const scoped = allItems.filter((i) => {
-          const itemClassRaw = i.system?.class || i.system?.associated_class || "";
-          return Boolean((itemClassRaw || "").trim());
-        });
-        filtered = Utils.filterItemsForDuplicatesOnActor(scoped, "item", this.actor, true);
-      }
-      const choices = filtered.map((i) => ({
-        value: i._id,
-        label: Utils.trimClassFromName(i.name) || i.name,
-        img: i.img || "icons/svg/mystery-man.svg",
-        description: i.system?.description ?? "",
-      }));
+      const ctx = this._resolveItemChooserContext(filterPlaybook, itemScope);
+      const candidates = await this._getItemChooserCandidates(ctx);
+      const ordered = this._partitionAndOrderCandidates(candidates, ctx);
+      const filtered = Utils.filterItemsForDuplicatesOnActor(ordered, "item", this.actor, true);
+      const choices = this._toItemChooserChoices(filtered);
 
       const result = await openCardSelectionDialog({
         title: `${game.i18n.localize("bitd-alt.Select")} ${game.i18n.localize("bitd-alt.items")}`,
@@ -933,33 +898,136 @@ export class BladesAlternateActorSheet extends BladesSheet {
       const selected = filtered.find((i) => i._id === result);
       if (!selected) return;
 
-      const itemData = {
-        name: selected.name,
-        type: selected.type,
-        system: foundry.utils.deepClone(selected.system ?? {}),
-        img: selected.img,
-      };
-      if (itemData.system) {
-        delete itemData.system.virtual;
-      }
-      if (isGeneral) {
-        if (itemData.system) {
-          delete itemData.system.class;
-          delete itemData.system.associated_class;
-        }
-      } else {
-        // Preserve source class for special items; do not override playbook tagging
-        if (!itemData.system) itemData.system = {};
-        const existingClass = (itemData.system.class || itemData.system.associated_class || "").trim();
-        if (existingClass) {
-          itemData.system.class = existingClass;
-        }
-      }
+      const itemData = this._buildEmbeddedItemData(selected, ctx);
       await this.actor.createEmbeddedDocuments("Item", [itemData]);
     } catch (err) {
       ui.notifications.error(`Failed to add item: ${err.message}`);
       console.error("Item chooser error", err);
     }
+  }
+
+  _resolveItemChooserContext(filterPlaybook, itemScope) {
+    const scope = itemScope || (filterPlaybook ? "playbook" : "general");
+    const isPlaybookScope = scope === "playbook";
+    const playbookNameRaw = isPlaybookScope
+      ? (filterPlaybook ||
+        this.actor?.items?.find((i) => i.type === "class")?.name ||
+        this.actor?.system?.playbook ||
+        "")
+      : "";
+    const playbookName = (playbookNameRaw || "").trim();
+    const playbookKey = playbookName.toLowerCase();
+    return { scope, isPlaybookScope, playbookName, playbookKey };
+  }
+
+  async _getItemChooserCandidates(ctx) {
+    return ctx.isPlaybookScope
+      ? this._getPlaybookScopeItems(ctx)
+      : this._getGeneralScopeItems();
+  }
+
+  _getItemClass(item) {
+    const raw = item?.system?.class ?? item?.system?.associated_class ?? "";
+    return (raw || "").trim();
+  }
+
+  async _getGeneralScopeItems() {
+    // Defaults (virtual) first
+    const defaults = await Utils.getVirtualListOfItems(
+      "item",
+      { actor: this.actor },
+      true,
+      "",
+      false,
+      false
+    );
+    const defaultsById = new Set(defaults.map((i) => i._id));
+
+    // Generic items from all sources
+    const allGeneric = (await Utils.getSourcedItemsByType("item")).filter((i) => {
+      const cls = this._getItemClass(i);
+      return !cls;
+    });
+
+    const extras = allGeneric.filter((i) => !defaultsById.has(i._id));
+    return [...defaults, ...extras];
+  }
+
+  async _getPlaybookScopeItems(ctx) {
+    const allClassed = (await Utils.getSourcedItemsByType("item")).filter((i) => {
+      const cls = this._getItemClass(i);
+      return Boolean(cls);
+    });
+    return allClassed;
+  }
+
+  _partitionAndOrderCandidates(items, ctx) {
+    const isPlaybookScope = ctx.isPlaybookScope;
+    const playbookKey = ctx.playbookKey;
+
+    const bucketed = items.map((item) => {
+      const cls = this._getItemClass(item);
+      const clsKey = cls.toLowerCase();
+      const virtual = item?.system?.virtual ? 0 : 1;
+
+      if (!isPlaybookScope) {
+        // General: defaults (virtual) first, then other generic
+        return { bucket: virtual, name: Utils.trimClassFromName(item.name) || item.name, item, virtual };
+      }
+
+      // Playbook: my playbook first, then other playbooks, then non-virtual world/user last
+      let primary = 2;
+      if (clsKey === playbookKey) {
+        primary = 0;
+      } else if (clsKey) {
+        primary = 1;
+      }
+      return { bucket: primary, name: Utils.trimClassFromName(item.name) || item.name, item, virtual };
+    });
+
+    bucketed.sort((a, b) => {
+      if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+      if (a.virtual !== b.virtual) return a.virtual - b.virtual;
+      if (a.name === b.name) return 0;
+      return a.name > b.name ? 1 : -1;
+    });
+
+    return bucketed.map((b) => b.item);
+  }
+
+  _toItemChooserChoices(items) {
+    return items.map((i) => ({
+      value: i._id,
+      label: Utils.trimClassFromName(i.name) || i.name,
+      img: i.img || "icons/svg/mystery-man.svg",
+      description: i.system?.description ?? "",
+    }));
+  }
+
+  _buildEmbeddedItemData(selected, ctx) {
+    const itemData = {
+      name: selected.name,
+      type: selected.type,
+      system: foundry.utils.deepClone(selected.system ?? {}),
+      img: selected.img,
+    };
+    itemData.system = this._normalizeEmbeddedItemSystem(itemData.system, ctx);
+    return itemData;
+  }
+
+  _normalizeEmbeddedItemSystem(system, ctx) {
+    const clone = system || {};
+    delete clone.virtual;
+    if (!ctx.isPlaybookScope) {
+      delete clone.class;
+      delete clone.associated_class;
+    } else {
+      const existingClass = this._getItemClass({ system: clone });
+      if (existingClass) {
+        clone.class = existingClass;
+      }
+    }
+    return clone;
   }
 
   async openAcquaintanceChooser() {
