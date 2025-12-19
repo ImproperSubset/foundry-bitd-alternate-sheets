@@ -365,9 +365,11 @@ function setupGlobalClockHandlers() {
       return;
     }
 
-    // Get current value from checked radio
-    const checkedInput = clockEl.querySelector('input[type="radio"]:checked');
-    const currentValue = checkedInput ? parseInt(checkedInput.value) : 0;
+    // Get current value from the BACKGROUND IMAGE (more reliable than radio state)
+    // The radio can be out of sync due to form handling race conditions
+    const bg = clockEl.style.backgroundImage || "";
+    const bgMatch = bg.match(/(\d+)clock_(\d+)\./);
+    const currentValue = bgMatch ? parseInt(bgMatch[2]) : 0;
 
     // Toggle behavior:
     // - If clicking on a segment that's already filled (clickedSegment <= currentValue),
@@ -415,9 +417,10 @@ function setupGlobalClockHandlers() {
       return;
     }
 
-    // Get current value from the checked radio
-    const checkedInput = clockEl.querySelector('input[type="radio"]:checked');
-    const currentValue = checkedInput ? parseInt(checkedInput.value) : 0;
+    // Get current value from the BACKGROUND IMAGE (more reliable than radio state)
+    const bg = clockEl.style.backgroundImage || "";
+    const bgMatch = bg.match(/(\d+)clock_(\d+)\./);
+    const currentValue = bgMatch ? parseInt(bgMatch[2]) : 0;
     const newValue = Math.max(0, currentValue - 1);
 
     if (newValue === currentValue) return;
