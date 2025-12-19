@@ -413,9 +413,24 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
   /** @override */
   async getData() {
-    let sheetData = await super.getData();
+    const baseData = await super.getData();
     Utils.ensureAllowEdit(this);
     const persistedUi = await Utils.loadUiState(this);
+    const sheetData = await this._initViewModel(baseData, persistedUi);
+
+    await this._applyCrewInfo(sheetData);
+    await this._applyAttributes(sheetData);
+    await this._applyDescriptions(sheetData);
+    this._applyLoadLevels(sheetData);
+    await this._applyPlaybookAndAbilities(sheetData);
+    await this._applyItems(sheetData);
+    await this._applyLoad(sheetData);
+    this._applyFilters(sheetData);
+
+    return sheetData;
+  }
+
+  async _initViewModel(sheetData, persistedUi) {
     if (typeof this.showFilteredAbilities === "undefined") {
       this.showFilteredAbilities = Boolean(persistedUi.showFilteredAbilities);
     }
@@ -438,7 +453,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       "showAliasInDirectory"
     );
     const actorData = sheetData.data;
-    // Ensure uuid is available in templates (it's on the document, not the data)
     actorData.uuid = this.actor.uuid;
     sheetData.actor = actorData;
     sheetData.system = actorData.system;
@@ -447,7 +461,17 @@ export class BladesAlternateActorSheet extends BladesSheet {
     sheetData.load_open = this.load_open;
     sheetData.allow_edit = this.allow_edit;
     sheetData.show_debug = this.show_debug;
+    sheetData.effects = BladesActiveEffect.prepareActiveEffectCategories(
+      this.actor.effects
+    );
+    const rawNotes = this.actor.getFlag("bitd-alternate-sheets", "notes");
+    if (rawNotes) {
+      sheetData.notes = await Utils.enrichNotes(this.actor, rawNotes);
+    }
+    return sheetData;
+  }
 
+  async _applyCrewInfo(sheetData) {
     const systemCrewEntries = this._getSystemCrewEntries();
     const primaryCrew = this._getPrimaryCrewEntry(systemCrewEntries);
     const crewActor = primaryCrew?.id
@@ -462,7 +486,9 @@ export class BladesAlternateActorSheet extends BladesSheet {
       name: crewName,
       hasLink: Boolean(crewId),
     };
+  }
 
+  async _applyAttributes(sheetData) {
     const computedAttributes = this.actor.getComputedAttributes();
     sheetData.system.attributes = computedAttributes;
     sheetData.attributes = computedAttributes;
@@ -475,18 +501,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
       sheetData.system.acquaintances_label == "BITD.Acquaintances"
         ? "bitd-alt.Acquaintances"
         : sheetData.system.acquaintances_label;
-    let rawNotes = this.actor.getFlag("bitd-alternate-sheets", "notes");
-    if (rawNotes) {
-      sheetData.notes = await Utils.enrichNotes(this.actor, rawNotes);
-    }
 
-    // Prepare active effects
-    sheetData.effects = BladesActiveEffect.prepareActiveEffectCategories(
-      this.actor.effects
-    );
-    let trauma_array = [];
     let trauma_object = {};
-
     if (Array.isArray(sheetData.system.trauma.list)) {
       trauma_object = Utils.convertArrayToBooleanObject(
         sheetData.system.trauma.list
@@ -496,15 +512,14 @@ export class BladesAlternateActorSheet extends BladesSheet {
       });
       await this.actor.update(trauma_object);
     }
-    trauma_array = Utils.convertBooleanObjectToArray(
+    const trauma_array = Utils.convertBooleanObjectToArray(
       sheetData.system.trauma.list
     );
-
     sheetData.trauma_array = trauma_array;
     sheetData.trauma_count = trauma_array.length;
-    // system.acquaintances_array = this.getAcquaintances();
+  }
 
-    // @todo - fix this. display heritage, background, and vice based on owned objects (original sheet style) or stored string, with priority given to string if not empty and not default value
+  async _applyDescriptions(sheetData) {
     sheetData.heritage =
       sheetData.system.heritage != "" && sheetData.system.heritage != "Heritage"
         ? sheetData.system.heritage
@@ -525,43 +540,44 @@ export class BladesAlternateActorSheet extends BladesSheet {
           ? Utils.getOwnedObjectByType(this.actor, "vice").name
           : "";
 
-    // Resolve descriptions for tooltips
     sheetData.heritage_description = await this._resolveDescription("heritage", sheetData.heritage);
     sheetData.background_description = await this._resolveDescription("background", sheetData.background);
     sheetData.vice_description = await this._resolveDescription("vice", sheetData.vice);
 
     const purveyorName = this.actor.getFlag(MODULE_ID, "vice_purveyor");
     sheetData.vice_purveyor_description = await this._resolveDescription("npc", purveyorName);
+  }
 
+  _applyLoadLevels(sheetData) {
     if (game.settings.get("blades-in-the-dark", "DeepCutLoad")) {
-      // Deep Cut: include Encumbered so mule/overmax can be represented
       sheetData.load_levels = {
         "BITD.Discreet": "BITD.Discreet",
         "BITD.Conspicuous": "BITD.Conspicuous",
         "BITD.Encumbered": "BITD.Encumbered",
       };
     } else {
-      // Traditional Load Levels
       sheetData.load_levels = {
         "BITD.Light": "BITD.Light",
         "BITD.Normal": "BITD.Normal",
         "BITD.Heavy": "BITD.Heavy",
       };
     }
+  }
 
-    let owned_playbooks = this.actor.items.filter(
+  async _applyPlaybookAndAbilities(sheetData) {
+    const owned_playbooks = this.actor.items.filter(
       (item) => item.type == "class"
     );
     if (owned_playbooks.length == 1) {
-
       sheetData.selected_playbook = owned_playbooks[0];
-    } else {
-
     }
 
+    const combined_abilities_list = await this._buildAbilityList(sheetData);
+    this._applyAbilityProgress(sheetData, combined_abilities_list);
+  }
+
+  async _buildAbilityList(sheetData) {
     let combined_abilities_list = [];
-    let all_generic_items = [];
-    let my_items = [];
     if (sheetData.selected_playbook) {
       combined_abilities_list = await Utils.getVirtualListOfItems(
         "ability",
@@ -571,7 +587,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
         false,
         true
       );
-      // my_items logic removed here, will be handled below
       sheetData.selected_playbook_full = sheetData.selected_playbook;
       sheetData.selected_playbook_full = await Utils.getItemByType(
         "class",
@@ -586,9 +601,11 @@ export class BladesAlternateActorSheet extends BladesSheet {
         false,
         true
       );
-      // my_items logic removed here, will be handled below
     }
+    return combined_abilities_list;
+  }
 
+  _applyAbilityProgress(sheetData, combined_abilities_list) {
     const abilityCostFor = (ability) => {
       const rawCost = ability?.system?.price ?? ability?.system?.cost ?? 1;
       const parsed = Number(rawCost);
@@ -623,18 +640,21 @@ export class BladesAlternateActorSheet extends BladesSheet {
       : combined_abilities_list;
 
     sheetData.available_playbook_abilities = filteredAbilities;
+    sheetData.my_abilities = sheetData.items.filter(
+      (ability) => ability.type == "ability"
+    );
+  }
 
-    // Standard Items: Classless Defaults (Virtual) + Classless Owned (Real)
+  async _applyItems(sheetData) {
     const genericDefaultsRaw = await Utils.getVirtualListOfItems(
       "item",
       sheetData,
-      true, // sort
-      "", // filter_playbook (empty for generic/standard)
-      false, // duplicate_owned
-      false // include_owned - we handle owned separately
+      true,
+      "",
+      false,
+      false
     );
 
-    // Sort and prioritize Armor and Heavy for defaults
     let armor = genericDefaultsRaw.findSplice((item) =>
       item.name.includes(game.i18n.localize("BITD.Armor"))
     );
@@ -659,9 +679,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     const genericDefaults = genericDefaultsRaw.filter((def) => {
       const cls = (def.system?.class || def.system?.associated_class || "").trim();
-      return !cls; // Only classless
+      return !cls;
     }).map(d => {
-      // Ensure virtual flag is set
       if (!d.system) d.system = {};
       d.system.virtual = true;
       d.owned = false;
@@ -672,7 +691,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       const cls = (i.system?.class || i.system?.associated_class || "").trim();
       return i.type === "item" && !cls;
     }).map(i => {
-      // Normalize owned item for display
       const data = i.toObject ? i.toObject() : foundry.utils.deepClone(i);
       data._id = i.id;
       if (!data.system) data.system = {};
@@ -683,19 +701,16 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     sheetData.generic_items = [...genericDefaults, ...genericOwned];
 
-    // Special Items: Classed Defaults (Virtual) + Classed Owned (Real)
     const currentPlaybookName = sheetData.selected_playbook ? sheetData.selected_playbook.name : "noclassselectod";
     const classedDefaultsRaw = await Utils.getVirtualListOfItems(
       "item",
       sheetData,
-      true, // sort
-      currentPlaybookName, // filter by playbook
-      false, // duplicate_owned
-      false // include_owned
+      true,
+      currentPlaybookName,
+      false,
+      false
     );
 
-    // Utils.getVirtualListOfItems already filters by playbook if passed, but let's be safe and explicit
-    // It returns things that match the playbook.
     const classedDefaults = classedDefaultsRaw.map(d => {
       if (!d.system) d.system = {};
       d.system.virtual = true;
@@ -716,15 +731,11 @@ export class BladesAlternateActorSheet extends BladesSheet {
     });
 
     sheetData.my_items = [...classedDefaults, ...classedOwned];
+  }
 
-    let my_abilities = sheetData.items.filter(
-      (ability) => ability.type == "ability"
-    );
-    sheetData.my_abilities = my_abilities;
-
-    // Calculate Load
+  async _applyLoad(sheetData) {
     let loadout = 0;
-    let equipped = await this.actor.getFlag(
+    const equipped = await this.actor.getFlag(
       "bitd-alternate-sheets",
       "equipped-items"
     );
@@ -741,7 +752,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       }
     }
 
-    //Sanity Check
     if (loadout < 0) {
       loadout = 0;
     }
@@ -752,7 +762,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
     sheetData.loadout = loadout;
 
     if (game.settings.get('blades-in-the-dark', 'DeepCutLoad')) {
-      //Deep Cuts Load
       switch (sheetData.system.selected_load_level) {
         case "BITD.Discreet":
           sheetData.max_load = sheetData.system.base_max_load + 4;
@@ -770,7 +779,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       }
     }
     else {
-      //Traditional Load
       switch (sheetData.system.selected_load_level) {
         case "BITD.Light":
           sheetData.max_load = sheetData.system.base_max_load + 3;
@@ -787,7 +795,9 @@ export class BladesAlternateActorSheet extends BladesSheet {
           break;
       }
     }
+  }
 
+  _applyFilters(sheetData) {
     sheetData.showFilteredAbilities = this.showFilteredAbilities;
     sheetData.showFilteredItems = this.showFilteredItems;
     sheetData.showFilteredAcquaintances = this.showFilteredAcquaintances;
@@ -803,8 +813,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       })
       : acquaintanceList;
     sheetData.display_acquaintances = filteredAcqs;
-
-    return sheetData;
   }
 
   async _resolveDescription(type, name) {
