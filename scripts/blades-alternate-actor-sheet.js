@@ -438,6 +438,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
       "showAliasInDirectory"
     );
     const actorData = sheetData.data;
+    // Ensure uuid is available in templates (it's on the document, not the data)
+    actorData.uuid = this.actor.uuid;
     sheetData.actor = actorData;
     sheetData.system = actorData.system;
     sheetData.coins_open = this.coins_open;
@@ -1280,7 +1282,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
       e.preventDefault();
       await this.clearLoad();
     });
-    Utils.bindClockControls(html, this.render.bind(this));
+    // NOTE: Clock controls are handled globally by setupGlobalClockHandlers() in hooks.js
     html.find("input.radio-toggle, label.radio-toggle")
       .off("click.radioToggle mousedown.radioToggle")
       .on("click.radioToggle", (e) => e.preventDefault())

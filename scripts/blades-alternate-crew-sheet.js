@@ -38,6 +38,10 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
       {};
     // The system sheet returns a data object; mirror actor/system for template parity.
     sheetData.actor = sheetData.data ?? sheetData.actor ?? this.actor;
+    // Ensure uuid is available in templates (it's on the document, not the data)
+    if (sheetData.actor && !sheetData.actor.uuid) {
+      sheetData.actor.uuid = this.actor.uuid;
+    }
     sheetData.system = sheetData.system ?? this.actor.system;
     sheetData.editable = this.options.editable;
     sheetData.allow_edit = this.allow_edit;
@@ -298,8 +302,7 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
       this.render(false);
     });
 
-    // Clock embeds in notes (shared with character sheet)
-    Utils.bindClockControls(html, this.render.bind(this));
+    // NOTE: Clock controls are handled globally by setupGlobalClockHandlers() in hooks.js
     Utils.bindStandingToggles(this, html);
     Utils.bindAllowEditToggle(this, html);
 

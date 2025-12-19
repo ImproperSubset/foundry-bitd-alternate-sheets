@@ -2,9 +2,11 @@
 Stress-tested click-heavy interactions (clocks, ability tooth bars, crew upgrades). Focused on per-click updates and renders under rapid use, aiming to suppress redundant work without changing visible behavior or sync.
 
 ## Interactions and Changes
-- **Clocks (img.clockImage)** – `scripts/utils.js::bindClockControls`
-  - Before: Each click/contextmenu issued `entity.update({system.value…})` with default render and no gating; rapid clicks could enqueue multiple updates/renders.
-  - After: Added a simple pending guard to drop overlapping clicks and set `{ render: false }` on the update while still calling the provided rerender callback. Per click: 1 update (render suppressed), 1 explicit rerender from callback.
+- **Clocks (.blades-clock)** – `scripts/hooks.js::setupGlobalClockHandlers`
+  - Single source of truth for all clock interactions via global event delegation on document.body.
+  - Uses radio input `name` attribute to determine update path (no special casing for healing clocks).
+  - Optimistic UI updates applied immediately; database save with `{ render: false }`.
+  - Legacy `img.clockImage` elements no longer exist; bindClockControls has been removed.
 - **Ability tooth bars** – `scripts/blades-alternate-actor-sheet.js` handler
   - Path: Toggle may create/delete an embedded Item via `Utils.toggleOwnership` (with `{render:false}`) and update a flag via `updateAbilityProgressFlag` (no-op guarded, `{render:false}`).
   - Per click: up to 2 updates (ownership + flag), 0 renders (UI updated manually). No change in this pass; considered safe.

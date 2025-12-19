@@ -76,20 +76,20 @@ export async function registerHooks() {
   // Also process journals and other sheets that might contain clock links
   // V12 and earlier
   Hooks.on("renderJournalSheet", async (app, html, data) => {
-    console.log("[BITD-ALT] renderJournalSheet fired", app.constructor.name);
+
     const container = html[0] || html;
     if (container) await replaceClockLinks(container);
   });
 
   Hooks.on("renderJournalPageSheet", async (app, html, data) => {
-    console.log("[BITD-ALT] renderJournalPageSheet fired", app.constructor.name);
+
     const container = html[0] || html;
     if (container) await replaceClockLinks(container);
   });
 
   // V11+ uses JournalTextPageSheet for text pages
   Hooks.on("renderJournalTextPageSheet", async (app, html, data) => {
-    console.log("[BITD-ALT] renderJournalTextPageSheet fired", app.constructor.name);
+
     const container = html[0] || html;
     if (container) await replaceClockLinks(container);
   });
@@ -101,7 +101,7 @@ export async function registerHooks() {
     // Check if this is a journal-related application
     const className = app.constructor.name;
     if (className.includes("Journal") || app.document?.documentName === "JournalEntry") {
-      console.log("[BITD-ALT] renderApplicationV2 (Journal) fired", className);
+
       const container = html instanceof HTMLElement ? html : (html[0] || html);
       if (container) replaceClockLinks(container); // Fire and forget
     }
@@ -110,7 +110,7 @@ export async function registerHooks() {
   // V13+ DocumentSheetV2 for journal entries
   Hooks.on("renderDocumentSheetV2", (app, html, data) => {
     if (app.document?.documentName === "JournalEntry" || app.document?.documentName === "JournalEntryPage") {
-      console.log("[BITD-ALT] renderDocumentSheetV2 (Journal) fired", app.constructor.name);
+
       const container = html instanceof HTMLElement ? html : (html[0] || html);
       if (container) replaceClockLinks(container); // Fire and forget
     }
@@ -261,12 +261,84 @@ async function replaceClockLinks(container, messageContent = null) {
 
 /**
  * Set up global event handlers for clock interactivity.
- * Uses event delegation on document.body to handle clocks in journals and other contexts.
+ * Uses event delegation on document.body to handle clocks everywhere.
+ * 
+ * This is the SINGLE SOURCE OF TRUTH for clock interactions.
+ * 
+ * How it works:
+ * - Reads update path from the radio input's `name` attribute (e.g., "system.healing_clock.value")
+ * - Gets document UUID from data-uuid on the clock or parent form
+ * - Performs optimistic UI update immediately
+ * - Saves to database in background with render: false
  */
 function setupGlobalClockHandlers() {
   const $body = $(document.body);
 
-  // Handle label clicks on clocks (for segment selection)
+  /**
+   * Shared helper to perform optimistic UI update on a clock element
+   */
+  function optimisticUpdate(clockEl, newValue) {
+    // Parse current state from background-image URL
+    const bg = clockEl.style.backgroundImage || "";
+    const urlMatch = bg.match(/url\(['"]?(.*?)['"]?\)/);
+    if (!urlMatch) return null;
+
+    const currentSrc = urlMatch[1];
+
+    // Match patterns like "4clock_2.svg" or "4-2.svg"
+    const clockMatch = currentSrc.match(/(\d+)clock_(\d+)\./) || currentSrc.match(/(\d+)-(\d+)\./);
+    if (!clockMatch) return null;
+
+    const type = parseInt(clockMatch[1]);
+    const currentValue = parseInt(clockMatch[2]);
+
+    // Extract color/theme from path
+    const themeMatch = currentSrc.match(/themes\/([^/]+)\//);
+    const color = themeMatch ? themeMatch[1] : "black";
+
+    // Build new URL
+    const newSrc = currentSrc.replace(
+      new RegExp(`${type}clock_${currentValue}\\.`),
+      `${type}clock_${newValue}.`
+    ).replace(
+      new RegExp(`${type}-${currentValue}\\.`),
+      `${type}-${newValue}.`
+    );
+
+    // Apply optimistic visual update
+    clockEl.style.backgroundImage = `url('${newSrc}')`;
+    clockEl.className = clockEl.className.replace(/clock-\d+-\d+/, `clock-${type}-${newValue}`);
+
+    // Update radio button states
+    const inputs = clockEl.querySelectorAll('input[type="radio"]');
+    inputs.forEach(inp => inp.checked = parseInt(inp.value) === newValue);
+
+    return { type, currentValue, color };
+  }
+
+  /**
+   * Get the update path from a radio input's name attribute.
+   * The name is set by the Handlebars helper, e.g., "system.healing_clock.value"
+   * For dynamically generated clocks, we strip the unique suffix.
+   */
+  function getUpdatePath(input) {
+    let name = input.name || "";
+    // Strip render-instance suffixes (e.g., "system.value-abc123-xyz789" → "system.value")
+    name = name.replace(/-[a-zA-Z0-9]+-[a-zA-Z0-9]+$/, "");
+    return name || "system.value";
+  }
+
+  /**
+   * Get the document UUID for a clock element.
+   * Checks data-uuid on the element, then parent containers, then form.
+   */
+  function getDocumentUuid(clockEl) {
+    return clockEl.dataset.uuid
+      || clockEl.closest('[data-uuid]')?.dataset.uuid
+      || clockEl.closest('form')?.dataset.uuid;
+  }
+
+  // Handle label clicks on clocks (segment selection)
   $body.on("click", ".blades-clock label.radio-toggle", async (e) => {
     // Skip if this is a snapshot (historical chat clock)
     if ($(e.currentTarget).closest('[data-snapshot="true"]').length) return;
@@ -283,31 +355,29 @@ function setupGlobalClockHandlers() {
 
     input.checked = true;
 
-    const el = label.closest('.blades-clock');
-    if (!el) return;
-
-    const uuid = el.dataset.uuid || el.closest('[data-uuid]')?.dataset.uuid;
-    if (!uuid) return;
+    const clockEl = label.closest('.blades-clock');
+    if (!clockEl) return;
 
     const newValue = parseInt(input.value);
+    const updatePath = getUpdatePath(input);
+    const uuid = getDocumentUuid(clockEl);
 
+    if (!uuid) {
+      console.warn("[BITD-ALT] Clock has no UUID, cannot save");
+      return;
+    }
+
+    // Optimistic UI update
+    optimisticUpdate(clockEl, newValue);
+
+    // Background save
     try {
       const doc = await fromUuid(uuid);
-      if (!doc) return;
-
-      // Update the clock visually
-      const type = doc.system?.type ?? 4;
-      const color = doc.system?.theme ?? "black";
-      const newSrc = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
-      el.style.backgroundImage = `url('${newSrc}')`;
-
-      // Update the class
-      el.className = el.className.replace(/clock-\d+-\d+/, `clock-${type}-${newValue}`);
-
-      // Save to database
-      await doc.update({ "system.value": newValue }, { render: false });
+      if (doc) {
+        await doc.update({ [updatePath]: newValue }, { render: false });
+      }
     } catch (err) {
-      console.warn("[BITD-ALT] Error updating clock:", err);
+      console.warn("[BITD-ALT] Error saving clock:", err);
     }
   });
 
@@ -318,36 +388,36 @@ function setupGlobalClockHandlers() {
 
     e.preventDefault();
 
-    const el = e.currentTarget;
-    const uuid = el.dataset.uuid || el.closest('[data-uuid]')?.dataset.uuid;
-    if (!uuid) return;
+    const clockEl = e.currentTarget;
+    const uuid = getDocumentUuid(clockEl);
 
+    if (!uuid) {
+      console.warn("[BITD-ALT] Clock has no UUID, cannot save");
+      return;
+    }
+
+    // Get current value from the checked radio
+    const checkedInput = clockEl.querySelector('input[type="radio"]:checked');
+    const currentValue = checkedInput ? parseInt(checkedInput.value) : 0;
+    const newValue = Math.max(0, currentValue - 1);
+
+    if (newValue === currentValue) return;
+
+    // Get update path from any radio input
+    const anyInput = clockEl.querySelector('input[type="radio"]');
+    const updatePath = anyInput ? getUpdatePath(anyInput) : "system.value";
+
+    // Optimistic UI update
+    optimisticUpdate(clockEl, newValue);
+
+    // Background save
     try {
       const doc = await fromUuid(uuid);
-      if (!doc) return;
-
-      const currentValue = doc.system?.value ?? 0;
-      const newValue = Math.max(0, currentValue - 1);
-
-      if (newValue === currentValue) return;
-
-      // Update the clock visually
-      const type = doc.system?.type ?? 4;
-      const color = doc.system?.theme ?? "black";
-      const newSrc = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
-      el.style.backgroundImage = `url('${newSrc}')`;
-
-      // Update the class
-      el.className = el.className.replace(/clock-\d+-\d+/, `clock-${type}-${newValue}`);
-
-      // Update checked radio
-      const inputs = el.querySelectorAll('input[type="radio"]');
-      inputs.forEach(inp => inp.checked = parseInt(inp.value) === newValue);
-
-      // Save to database
-      await doc.update({ "system.value": newValue }, { render: false });
+      if (doc) {
+        await doc.update({ [updatePath]: newValue }, { render: false });
+      }
     } catch (err) {
-      console.warn("[BITD-ALT] Error updating clock:", err);
+      console.warn("[BITD-ALT] Error saving clock:", err);
     }
   });
 
