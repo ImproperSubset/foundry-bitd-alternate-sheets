@@ -1719,129 +1719,140 @@ export class BladesAlternateActorSheet extends BladesSheet {
    */
   async _handleSmartEdit(event) {
     event.preventDefault();
-    const target = event.currentTarget;
-    const field = target.dataset.field;
-    const header = target.dataset.header;
-    const initialValue = target.dataset.value || "";
-    const source = target.dataset.source || "compendium_item";
-    const filterField = target.dataset.filterField || "";
-    const filterValue = target.dataset.filterValue || "";
+    const ctx = this._smartEditContextFromEvent(event);
+    const candidates = await this._getSmartEditCandidates(ctx);
+    const shouldOpenChooser = ctx.source === "actor" || (candidates && candidates.length > 0);
 
-    // 1. Determine Items
-    let availableItems = [];
-
-    // Mode A: Actor Source (NPCs)
-    if (source === "actor") {
-      availableItems = await Utils.getFilteredActors(
-        "npc", // Hardcoded type 'npc' for now
-        filterField,
-        filterValue
-      );
-
-      // Advanced Filtering: Vice Purveyor specific logic
-      if (filterValue === "Vice Purveyor") {
-        const currentVice = this.actor.system.vice; // Ensure we read from the actor data
-        if (currentVice && typeof currentVice === "string" && currentVice.trim().length > 0) {
-          const viceKey = currentVice.toLowerCase().trim();
-          availableItems = availableItems.filter(npc => {
-            const keywords = (npc.system.associated_crew_type || "").toLowerCase();
-            return keywords.includes(viceKey);
-          });
-        }
-      }
-
-      // If source is actor, we ALWAYS show the dialog, even if empty, to show "No Results"
-      // instead of falling back to text input which is confusing.
-      // But openCardSelectionDialog anticipates items. If 0 items, it might just render an empty list.
-      // Let's ensure we return early here if source was actor, regardless of count.
-      if (availableItems) { // Check if defined (it is [] if empty)
-        // ...
-      }
-    }
-    // Mode B: Compendium Source (Default)
-    else {
-      // Map fields to Item Types
-      const typeMap = {
-        "system.heritage": "heritage",
-        "system.background": "background",
-        "system.vice": "vice"
-      };
-      const type = typeMap[field];
-
-      if (type) {
-        availableItems = await Utils.getSourcedItemsByType(type);
-      }
-    }
-
-    // 2. Check if we should open the card selector
-    // We open it if we found items OR if we are in Actor mode (to show "No Results" instead of fallback)
-    if ((availableItems && availableItems.length > 0) || source === "actor") {
-      // 2. Prepare Choices
-      const choices = (availableItems || []).map((i) => ({
-        value: i.name || i._id,
-        label: i.name,
-        img: i.img || "icons/svg/mystery-man.svg",
-        description: i.system?.description ?? "",
-      }));
-
-      // 3. Open Chooser
-      const result = await openCardSelectionDialog({
-        title: `${game.i18n.localize("bitd-alt.Select")} ${header}`,
-        instructions: `Choose a ${header} from the list below.`,
-        okLabel: game.i18n.localize("bitd-alt.Select") || "Select",
-        cancelLabel: game.i18n.localize("bitd-alt.Cancel") || "Cancel",
-        clearLabel: game.i18n.localize("bitd-alt.Clear") || "Clear",
-        choices: choices,
-        currentValue: initialValue,
-      });
-
+    if (shouldOpenChooser) {
+      const choices = this._toSmartEditChoices(candidates || []);
+      const result = await this._openSmartEditChooser(ctx, choices);
       if (result === undefined) return; // Cancelled
-
       const updateValue = result === null ? "" : result;
-      try {
-        await this.actor.update({ [field]: updateValue });
-      } catch (err) {
-        ui.notifications.error(`Failed to update ${header}: ${err.message}`);
-        console.error("Smart field update error:", err);
-      }
-      return; // Stop here, do not fall through to text input
+      await this._updateSmartField(ctx.field, updateValue, ctx.header);
+      return;
     }
 
+    const textValue = await this._openSmartEditTextDialog(ctx);
+    if (textValue === undefined) return;
+    await this._updateSmartField(ctx.field, textValue, ctx.header);
+  }
 
-    // Default: Text Input Mode
+  _smartEditContextFromEvent(event) {
+    const target = event.currentTarget;
+    return {
+      field: target.dataset.field,
+      header: target.dataset.header,
+      initialValue: target.dataset.value || "",
+      source: target.dataset.source || "compendium_item",
+      filterField: target.dataset.filterField || "",
+      filterValue: target.dataset.filterValue || "",
+    };
+  }
+
+  async _getSmartEditCandidates(ctx) {
+    if (ctx.source === "actor") {
+      return this._getSmartEditActorCandidates(ctx);
+    }
+    return this._getSmartEditCompendiumCandidates(ctx);
+  }
+
+  async _getSmartEditActorCandidates(ctx) {
+    let availableItems = await Utils.getFilteredActors(
+      "npc",
+      ctx.filterField,
+      ctx.filterValue
+    );
+
+    if (ctx.filterValue === "Vice Purveyor") {
+      const currentVice = this.actor.system.vice;
+      if (currentVice && typeof currentVice === "string" && currentVice.trim().length > 0) {
+        const viceKey = currentVice.toLowerCase().trim();
+        availableItems = availableItems.filter((npc) => {
+          const keywords = (npc.system.associated_crew_type || "").toLowerCase();
+          return keywords.includes(viceKey);
+        });
+      }
+    }
+    return availableItems || [];
+  }
+
+  async _getSmartEditCompendiumCandidates(ctx) {
+    const typeMap = {
+      "system.heritage": "heritage",
+      "system.background": "background",
+      "system.vice": "vice",
+    };
+    const type = typeMap[ctx.field];
+    if (!type) return [];
+    const items = await Utils.getSourcedItemsByType(type);
+    return items || [];
+  }
+
+  _toSmartEditChoices(items) {
+    return items.map((i) => ({
+      value: i.name || i._id,
+      label: i.name,
+      img: i.img || "icons/svg/mystery-man.svg",
+      description: i.system?.description ?? "",
+    }));
+  }
+
+  async _openSmartEditChooser(ctx, choices) {
+    return openCardSelectionDialog({
+      title: `${game.i18n.localize("bitd-alt.Select")} ${ctx.header}`,
+      instructions: `Choose a ${ctx.header} from the list below.`,
+      okLabel: game.i18n.localize("bitd-alt.Select") || "Select",
+      cancelLabel: game.i18n.localize("bitd-alt.Cancel") || "Cancel",
+      clearLabel: game.i18n.localize("bitd-alt.Clear") || "Clear",
+      choices: choices,
+      currentValue: ctx.initialValue,
+    });
+  }
+
+  async _updateSmartField(field, value, header) {
+    try {
+      await this.actor.update({ [field]: value });
+    } catch (err) {
+      ui.notifications.error(`Failed to update ${header}: ${err.message}`);
+      console.error("Smart field update error:", err);
+    }
+  }
+
+  async _openSmartEditTextDialog(ctx) {
+    const escapedHeader = foundry.utils.escapeHTML(ctx.header);
+    const escapedValue = foundry.utils.escapeHTML(ctx.initialValue);
     const content = `
       <form>
         <div class="form-group">
-          <label>${header}</label>
-          <input type="text" name="value" value="${initialValue}" autofocus/>
+          <label>${escapedHeader}</label>
+          <input type="text" name="value" value="${escapedValue}" autofocus/>
         </div>
       </form>
       `;
 
-    new Dialog({
-      title: `${game.i18n.localize("bitd-alt.Edit")} ${header}`,
-      content: content,
-      buttons: {
-        save: {
-          label: game.i18n.localize("bitd-alt.Ok") || "Ok",
-          icon: '<i class="fas fa-check"></i>',
-          callback: async (html) => {
-            const newValue = html.find('[name="value"]').val();
-            try {
-              await this.actor.update({ [field]: newValue });
-            } catch (err) {
-              ui.notifications.error(`Failed to update ${header}: ${err.message}`);
-              console.error("Smart field update error:", err);
-            }
-          }
+    return new Promise((resolve) => {
+      new Dialog({
+        title: `${game.i18n.localize("bitd-alt.Edit")} ${escapedHeader}`,
+        content: content,
+        buttons: {
+          save: {
+            label: game.i18n.localize("bitd-alt.Ok") || "Ok",
+            icon: '<i class="fas fa-check"></i>',
+            callback: async (html) => {
+              const newValue = html.find('[name="value"]').val();
+              resolve(newValue);
+            },
+          },
+          cancel: {
+            label: game.i18n.localize("bitd-alt.Cancel") || "Cancel",
+            icon: '<i class="fas fa-times"></i>',
+            callback: () => resolve(undefined),
+          },
         },
-        cancel: {
-          label: game.i18n.localize("bitd-alt.Cancel") || "Cancel",
-          icon: '<i class="fas fa-times"></i>'
-        }
-      },
-      default: "save"
-    }).render(true);
+        default: "save",
+        close: () => resolve(undefined),
+      }).render(true);
+    });
   }
 
   async _handleCrewFieldClick() {
