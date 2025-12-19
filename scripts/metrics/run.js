@@ -8,11 +8,15 @@ const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 const fg = require("fast-glob");
-const escomplex = require("escomplex");
+const { Linter } = require("eslint");
 
 const ROOT = path.resolve(__dirname, "../..");
 const REPORT_DIR = path.join(ROOT, "reports", "metrics");
 const SNAPSHOT_DIR = path.join(REPORT_DIR, "snapshots");
+const STYLE_DIR = path.join(ROOT, "styles");
+const SCSS_SRC = path.join(STYLE_DIR, "scss");
+const CSS_OUT = path.join(STYLE_DIR, "css", "bitd-alt.css");
+const VENDOR_PATTERNS = ["**/scripts/lib/**", "**/*.min.js"];
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -44,6 +48,7 @@ function parseArgs() {
 
 function runCloc() {
   const outFile = path.join(REPORT_DIR, "cloc.json");
+  const ignoreRegex = "(node_modules|styles/css|dist|build|coverage|packs|reports|\\.git)";
   const cmd = [
     "npx",
     "cloc",
@@ -53,7 +58,8 @@ function runCloc() {
     "--json",
     "--quiet",
     "--hide-rate",
-    "--exclude-dir=.git,node_modules,styles/css,dist,build,coverage,packs,reports",
+    "--fullpath",
+    `--not-match-d='${ignoreRegex}'`,
   ].join(" ");
   const output = runCmd(cmd);
   fs.writeFileSync(outFile, output, "utf8");
@@ -63,16 +69,26 @@ function runCloc() {
 function runJscpd() {
   ensureDir(REPORT_DIR);
   const outFile = path.join(REPORT_DIR, "jscpd-report.json");
+  const excludePatterns = [
+    "**/styles/css/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/reports/**",
+    "**/packs/**",
+    ...VENDOR_PATTERNS,
+  ];
   const cmd = [
     "npx",
     "jscpd",
-    '--reporters "json"',
+    '--reporters "json,html"',
     `--output "${REPORT_DIR}"`,
-    '--path "templates"',
-    '--path "styles"',
-    '--path "scripts"',
+    "templates",
+    "styles",
+    "scripts",
     '--format "javascript,handlebars,scss"',
-    '--ignore "**/styles/css/**" --ignore "**/node_modules/**" --ignore "**/dist/**" --ignore "**/build/**" --ignore "**/coverage/**" --ignore "**/reports/**"',
+    ...excludePatterns.map((p) => `--ignore "${p}"`),
     "--min-lines 5",
     "--min-tokens 50",
     "--silent",
@@ -91,35 +107,98 @@ function runComplexity() {
     "!**/coverage/**",
     "!**/styles/css/**",
     "!**/reports/**",
+    "!**/packs/**",
+    ...VENDOR_PATTERNS.map((p) => `!${p}`),
   ];
   const files = fg.sync(pattern, { cwd: ROOT, absolute: true });
-  const modules = files.map((file) => ({
-    path: path.relative(ROOT, file),
-    code: fs.readFileSync(file, "utf8"),
-  }));
-  if (!modules.length) return null;
-  const report = escomplex.analyse(modules, { logicalor: false, switchcase: true });
-  const functions = [];
-  for (const mod of report.reports) {
-    for (const fn of mod.functions || []) {
-      functions.push({
-        path: mod.path,
-        name: fn.name,
-        cyclomatic: fn.cyclomatic,
-        params: fn.params,
-        lineStart: fn.lineStart,
-        lineEnd: fn.lineEnd,
+  if (!files.length) return { status: "ok", maxCyclomatic: 0, offenders: [] };
+
+  try {
+    const linter = new Linter();
+    const config = {
+      languageOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+      },
+      rules: {
+        complexity: ["warn", { max: 1 }], // force messages to capture actual complexity
+      },
+    };
+    const lintResults = files.map((file) => {
+      const code = fs.readFileSync(file, "utf8");
+      const messages = linter.verify(code, config, { filename: file, configType: "flat" });
+      return { filePath: file, messages };
+    });
+    const offenders = [];
+    for (const res of lintResults) {
+      const msgs = res.messages || [];
+      msgs.forEach((m) => {
+        if (m.ruleId === "complexity") {
+          const match = m.message.match(/complexity of (\d+)/);
+          const complexity = match ? Number(match[1]) : null;
+          offenders.push({
+            file: path.relative(ROOT, res.filePath),
+            function: m.nodeType || m.message.split(" ")[1] || "unknown",
+            complexity,
+            line: m.line,
+          });
+        }
       });
     }
+    offenders.sort((a, b) => (b.complexity || 0) - (a.complexity || 0));
+    const top = offenders.slice(0, 10);
+    const maxCyclomatic = offenders[0]?.complexity || 0;
+    const scope = {
+      include: ["scripts/**/*.js"],
+      exclude: VENDOR_PATTERNS,
+    };
+    return {
+      status: "ok",
+      maxCyclomatic,
+      offenders: top,
+      scope,
+    };
+  } catch (err) {
+    return { status: "error", error: err.message || String(err), scope: { include: ["scripts/**/*.js"], exclude: VENDOR_PATTERNS } };
   }
-  functions.sort((a, b) => b.cyclomatic - a.cyclomatic);
-  const topFunctions = functions.slice(0, 10);
-  const maxCyclomatic = functions[0]?.cyclomatic || 0;
+}
+
+function runStyleMetrics() {
+  const scssFiles = fg.sync(["**/*.scss", "!**/flexbox/**"], { cwd: SCSS_SRC, absolute: true });
+  let scssLines = 0;
+  scssFiles.forEach((file) => {
+    const content = fs.readFileSync(file, "utf8");
+    scssLines += content.split(/\r?\n/).length;
+  });
+  let cssBytes = 0;
+  if (fs.existsSync(CSS_OUT)) {
+    cssBytes = fs.readFileSync(CSS_OUT).length;
+  }
+  return { scssLines, cssBytes };
+}
+
+function runDryCounters() {
+  const templateGlobs = ["templates/**/*.hbs", "templates/**/*.html"];
+  const partialFiles = fg.sync(templateGlobs.map((g) => g.replace("**/*", "parts/**/*")), { cwd: ROOT, absolute: true }).length;
+  const templateFiles = fg.sync(templateGlobs, { cwd: ROOT, absolute: true });
+  let partialCallSites = 0;
+  templateFiles.forEach((file) => {
+    const content = fs.readFileSync(file, "utf8");
+    const matches = content.match(/{{\s*>/g);
+    if (matches) partialCallSites += matches.length;
+  });
+  const scssPartialFiles = fg.sync(["styles/scss/**/_*.scss", "!**/flexbox/**"], { cwd: ROOT, absolute: true }).length;
+  const scssUseImport = fg.sync(["styles/scss/**/*.scss", "!**/flexbox/**"], { cwd: ROOT, absolute: true })
+    .reduce((count, file) => {
+      const content = fs.readFileSync(file, "utf8");
+      const matches = content.match(/@(use|import)\s+/g);
+      return count + (matches ? matches.length : 0);
+    }, 0);
   return {
-    aggregate: report.aggregate || {},
-    functions: functions.length,
-    maxCyclomatic,
-    topFunctions,
+    hbsPartials: partialFiles,
+    hbsPartialCalls: partialCallSites,
+    scssPartials: scssPartialFiles,
+    scssUsesImports: scssUseImport,
   };
 }
 
@@ -138,9 +217,23 @@ function buildSnapshot(label, cloc, jscpd, complexity) {
   }
 
   const duplication = jscpd?.statistics?.total;
+  const jscpdScope = {
+    include: ["templates", "styles", "scripts"],
+    exclude: ["**/styles/css/**", "**/node_modules/**", "**/dist/**", "**/build/**", "**/coverage/**", "**/reports/**", "**/packs/**", ...VENDOR_PATTERNS],
+  };
+  const complexitySummary = complexity || null;
+  const pkg = require(path.join(ROOT, "package.json"));
+  const toolVersions = {
+    cloc: pkg.devDependencies?.cloc || null,
+    jscpd: pkg.devDependencies?.jscpd || null,
+    eslint: pkg.devDependencies?.eslint || null,
+  };
   const snapshot = {
     label,
-    generatedAt: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
+    nodeVersion: process.version,
+    platform: `${process.platform}-${process.arch}`,
+    toolVersions,
     cloc: clocSummary,
     jscpd: duplication
       ? {
@@ -148,15 +241,15 @@ function buildSnapshot(label, cloc, jscpd, complexity) {
         sources: duplication.sources,
         clones: duplication.clones,
         percentage: duplication.percentage,
+        scope: jscpdScope,
       }
       : null,
-    complexity: complexity
-      ? {
-        maxCyclomatic: complexity.maxCyclomatic,
-        functions: complexity.functions,
-        topFunctions: complexity.topFunctions,
-      }
-      : null,
+    complexity: complexitySummary,
+    styleMetrics: runStyleMetrics(),
+    dryCounters: runDryCounters(),
+    reports: {
+      jscpdHtml: path.join("reports", "metrics", "html", "index.html"),
+    },
   };
   return snapshot;
 }

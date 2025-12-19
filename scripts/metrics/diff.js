@@ -62,10 +62,33 @@ function main() {
   summary.push(`\nDuplication (% lines): ${aDup.toFixed(2)} -> ${bDup.toFixed(2)} (Δ ${dDup >= 0 ? "+" : ""}${dDup.toFixed(2)})`);
 
   // Complexity
-  const aCx = base.complexity?.maxCyclomatic || 0;
-  const bCx = cur.complexity?.maxCyclomatic || 0;
-  const dCx = delta(aCx, bCx);
-  summary.push(`Max cyclomatic: ${aCx} -> ${bCx} (Δ ${dCx >= 0 ? "+" : ""}${dCx})`);
+  const baseCx = base.complexity || {};
+  const curCx = cur.complexity || {};
+  if (baseCx.status === "ok" && curCx.status === "ok") {
+    const aCx = baseCx.maxCyclomatic || 0;
+    const bCx = curCx.maxCyclomatic || 0;
+    const dCx = delta(aCx, bCx);
+    summary.push(`Max cyclomatic: ${aCx} -> ${bCx} (Δ ${dCx >= 0 ? "+" : ""}${dCx})`);
+  } else {
+    summary.push(`Complexity status: ${baseCx.status || "n/a"} -> ${curCx.status || "n/a"}`);
+    if (curCx.error) summary.push(`Current complexity error: ${curCx.error}`);
+  }
+
+  // Style metrics
+  const aScss = base.styleMetrics?.scssLines || 0;
+  const bScss = cur.styleMetrics?.scssLines || 0;
+  const dScss = delta(aScss, bScss);
+  const aCss = base.styleMetrics?.cssBytes || 0;
+  const bCss = cur.styleMetrics?.cssBytes || 0;
+  const dCss = delta(aCss, bCss);
+  summary.push(`SCSS lines: ${aScss} -> ${bScss} (Δ ${dScss >= 0 ? "+" : ""}${dScss})`);
+  summary.push(`CSS bytes:  ${aCss} -> ${bCss} (Δ ${dCss >= 0 ? "+" : ""}${dCss})`);
+
+  // DRY counters
+  const aHbsCalls = base.dryCounters?.hbsPartialCalls || 0;
+  const bHbsCalls = cur.dryCounters?.hbsPartialCalls || 0;
+  const dHbsCalls = delta(aHbsCalls, bHbsCalls);
+  summary.push(`Partial call sites: ${aHbsCalls} -> ${bHbsCalls} (Δ ${dHbsCalls >= 0 ? "+" : ""}${dHbsCalls})`);
 
   console.log(summary.join("\n"));
 }
