@@ -3,19 +3,23 @@
 @use "../mixin" as *;
 
 @mixin harm-styles {
+    .harm {
+        padding-bottom: 2px !important;
+    }
+
     .character-harm {
         display: grid;
-        grid-template-columns: 1em repeat(6, 1fr);
-        grid-template-rows: repeat(5, 1.6em);
+        grid-template-columns: 1em repeat(4, 1fr) 1.15fr min-content;
+        grid-template-rows: repeat(3, 1.6em) auto; // Allow armor row to grow
         grid-column-gap: 1px;
         grid-row-gap: 1px;
         place-items: center;
+        padding-bottom: 2px;
         grid-template-areas:
-            "empty header-harm header-harm header-harm header-harm header-effect header-healing"
             "rownum3 heavy heavy heavy heavy heavy-effect healing"
             "rownum2 medium1 medium1 medium2 medium2 medium-effect healing"
             "rownum1 light1 light1 light2 light2 light-effect healing"
-            "armor armor armor armor armor armor armor";
+            "armor-label armor-label armor-label armor-label armor-label armor-label healing";
 
         input[type="text"] {
             height: 100%;
@@ -23,28 +27,6 @@
             border-radius: 0;
             background-color: color.adjust($lightgray, $lightness: -10%);
             z-index: 10;
-        }
-
-        header {
-            width: 100%;
-            background-color: $almost_black !important;
-            color: $almost_white !important;
-            font-family: "Kirsty", serif;
-            text-transform: uppercase;
-            padding: 2px 0;
-            text-align: center;
-        }
-
-        header.harm {
-            grid-area: header-harm;
-        }
-
-        header.effect {
-            grid-area: header-effect;
-        }
-
-        header.healing {
-            grid-area: header-healing;
         }
 
         .rownum3 {
@@ -89,13 +71,26 @@
 
         .healing-clock {
             grid-area: healing;
-            padding-top: 25px;
-            @include clock(4, 100);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding-left: 5px;
+
+            @include clock(4, 50);
 
             label i.nullifier {
-                position: absolute;
-                top: 15px;
-                right: 0px;
+                display: none;
+            }
+
+            &::after {
+                content: "HEALING";
+                font-family: "Kirsty", serif;
+                font-weight: bold;
+                text-transform: uppercase;
+                font-size: 0.8em; // Match roughly the size of armor labels
+                margin-top: 5px;
             }
         }
 
@@ -107,6 +102,9 @@
             font-family: "Crimson Text", serif;
             font-size: 0.9rem;
             font-style: italic;
+            justify-self: start;
+            padding-left: 5px;
+            white-space: nowrap;
         }
 
         .rownum1,
@@ -118,26 +116,36 @@
         }
 
         .armor-use {
-            grid-area: armor;
+            grid-area: armor-label;
             text-align: left;
             font-family: "Kirsty", serif;
             font-weight: bold;
             text-transform: uppercase;
+
             display: flex;
-            align-items: center;
+            flex-flow: row wrap;
             justify-content: flex-start;
-            gap: 5px;
+            align-items: center;
+            gap: 2px;
+
             width: 100%;
             padding-left: 5px;
+            margin-top: 5px;
+
+            label {
+                margin: 0;
+                padding-right: 2px;
+            }
 
             input {
                 margin: 0;
+                margin-right: 10px;
             }
         }
 
         .grid-lines {
             background-color: $almost_black;
-            grid-area: 2 / 2 / 5 / 6;
+            grid-area: 1 / 2 / 4 / 6;
             width: 100%;
             height: calc(100% - 1px);
             z-index: 1;
