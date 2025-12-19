@@ -1,0 +1,146 @@
+@use "../variables" as *;
+@use "sass:color";
+@use "../mixin" as *;
+
+@mixin harm-styles {
+    .character-harm {
+        display: grid;
+        grid-template-columns: 1em repeat(6, 1fr);
+        grid-template-rows: repeat(5, 1.6em);
+        grid-column-gap: 1px;
+        grid-row-gap: 1px;
+        place-items: center;
+        grid-template-areas:
+            "empty header-harm header-harm header-harm header-harm header-effect header-healing"
+            "rownum3 heavy heavy heavy heavy heavy-effect healing"
+            "rownum2 medium1 medium1 medium2 medium2 medium-effect healing"
+            "rownum1 light1 light1 light2 light2 light-effect healing"
+            "armor armor armor armor armor armor armor";
+
+        input[type="text"] {
+            height: 100%;
+            width: 100%;
+            border-radius: 0;
+            background-color: color.adjust($lightgray, $lightness: -10%);
+            z-index: 10;
+        }
+
+        header {
+            width: 100%;
+            background-color: $almost_black !important;
+            color: $almost_white !important;
+            font-family: "Kirsty", serif;
+            text-transform: uppercase;
+            padding: 2px 0;
+            text-align: center;
+        }
+
+        header.harm {
+            grid-area: header-harm;
+        }
+
+        header.effect {
+            grid-area: header-effect;
+        }
+
+        header.healing {
+            grid-area: header-healing;
+        }
+
+        .rownum3 {
+            grid-area: rownum3;
+        }
+
+        .heavy {
+            grid-area: heavy;
+        }
+
+        .effect-text.heavy {
+            grid-area: heavy-effect;
+        }
+
+        .rownum2 {
+            grid-area: rownum2;
+        }
+
+        .medium1 {
+            grid-area: medium1;
+        }
+
+        .medium2 {
+            grid-area: medium2;
+        }
+
+        .effect-text.medium {
+            grid-area: medium-effect;
+        }
+
+        .light1 {
+            grid-area: light1;
+        }
+
+        .light2 {
+            grid-area: light2;
+        }
+
+        .effect-text.light {
+            grid-area: light-effect;
+        }
+
+        .healing-clock {
+            grid-area: healing;
+            padding-top: 25px;
+            @include clock(4, 100);
+
+            label i.nullifier {
+                position: absolute;
+                top: 15px;
+                right: 0px;
+            }
+        }
+
+        .rownum1 {
+            grid-area: rownum1;
+        }
+
+        .effect-text {
+            font-family: "Crimson Text", serif;
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        .rownum1,
+        .rownum2,
+        .rownum3 {
+            font-weight: bold;
+            font-size: 1.2em;
+            font-family: "Kirsty", serif;
+        }
+
+        .armor-use {
+            grid-area: armor;
+            text-align: left;
+            font-family: "Kirsty", serif;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 5px;
+            width: 100%;
+            padding-left: 5px;
+
+            input {
+                margin: 0;
+            }
+        }
+
+        .grid-lines {
+            background-color: $almost_black;
+            grid-area: 2 / 2 / 5 / 6;
+            width: 100%;
+            height: calc(100% - 1px);
+            z-index: 1;
+        }
+    }
+}
