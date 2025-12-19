@@ -1151,6 +1151,11 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     if (!target) return;
 
+    // Safety check: Ignore clock inputs (handled globally in hooks.js)
+    if ($(target).closest('.blades-clock').length || $(event.currentTarget).closest('.blades-clock').length) {
+      return;
+    }
+
     const fieldName = target.name;
     const clickedValue = parseInt(target.value);
 
@@ -1283,6 +1288,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
       await this.clearLoad();
     });
     // NOTE: Clock controls are handled globally by setupGlobalClockHandlers() in hooks.js
+    // We handle exclusion inside _onRadioToggle to prevent double-firing
     html.find("input.radio-toggle, label.radio-toggle")
       .off("click.radioToggle mousedown.radioToggle")
       .on("click.radioToggle", (e) => e.preventDefault())

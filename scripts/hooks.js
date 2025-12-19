@@ -395,7 +395,18 @@ function setupGlobalClockHandlers() {
     try {
       const doc = await fromUuid(uuid);
       if (doc) {
-        await doc.update({ [updatePath]: newValue }, { render: false });
+        const updateData = { [updatePath]: newValue };
+
+        // For clock actors, also update the img to keep sidebar/token in sync
+        if (doc.type === "🕛 clock" || doc.type === "clock") {
+          const type = doc.system?.type ?? 4;
+          const color = doc.system?.theme ?? "black";
+          const imgPath = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
+          updateData.img = imgPath;
+          updateData["prototypeToken.texture.src"] = imgPath;
+        }
+
+        await doc.update(updateData, { render: false });
       }
     } catch (err) {
       console.warn("[BITD-ALT] Error saving clock:", err);
@@ -408,6 +419,7 @@ function setupGlobalClockHandlers() {
     if ($(e.currentTarget).closest('[data-snapshot="true"]').length) return;
 
     e.preventDefault();
+    e.stopPropagation();
 
     const clockEl = e.currentTarget;
     const uuid = getDocumentUuid(clockEl);
@@ -422,7 +434,6 @@ function setupGlobalClockHandlers() {
     const bgMatch = bg.match(/(\d+)clock_(\d+)\./);
     const currentValue = bgMatch ? parseInt(bgMatch[2]) : 0;
     const newValue = Math.max(0, currentValue - 1);
-
     if (newValue === currentValue) return;
 
     // Get update path from any radio input
@@ -436,10 +447,32 @@ function setupGlobalClockHandlers() {
     try {
       const doc = await fromUuid(uuid);
       if (doc) {
-        await doc.update({ [updatePath]: newValue }, { render: false });
+        const updateData = { [updatePath]: newValue };
+
+        // For clock actors, also update the img to keep sidebar/token in sync
+        if (doc.type === "🕛 clock" || doc.type === "clock") {
+          const type = doc.system?.type ?? 4;
+          const color = doc.system?.theme ?? "black";
+          const imgPath = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
+          updateData.img = imgPath;
+          updateData["prototypeToken.texture.src"] = imgPath;
+        }
+
+        await doc.update(updateData, { render: false });
       }
     } catch (err) {
       console.warn("[BITD-ALT] Error saving clock:", err);
+    }
+  });
+
+  // Stop propagation of change/click events on clock radio inputs
+  // to prevent default form handlers (which cause race conditions)
+  $body.on("change click", ".blades-clock input[type='radio']", (e) => {
+    // Only stop if it's one of our handled clocks
+    if ($(e.currentTarget).closest('.blades-clock').length) {
+      e.stopPropagation();
+      // We don't preventDefault on change because the browser has already changed it
+      // But we stopping propagation prevents adding the dirty flag or submitting
     }
   });
 
