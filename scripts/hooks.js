@@ -338,7 +338,7 @@ function setupGlobalClockHandlers() {
       || clockEl.closest('form')?.dataset.uuid;
   }
 
-  // Handle label clicks on clocks (segment selection)
+  // Handle label clicks on clocks (segment selection with toggle behavior)
   $body.on("click", ".blades-clock label.radio-toggle", async (e) => {
     // Skip if this is a snapshot (historical chat clock)
     if ($(e.currentTarget).closest('[data-snapshot="true"]').length) return;
@@ -353,12 +353,10 @@ function setupGlobalClockHandlers() {
     const input = document.getElementById(forId);
     if (!input || input.type !== "radio") return;
 
-    input.checked = true;
-
     const clockEl = label.closest('.blades-clock');
     if (!clockEl) return;
 
-    const newValue = parseInt(input.value);
+    const clickedSegment = parseInt(input.value);
     const updatePath = getUpdatePath(input);
     const uuid = getDocumentUuid(clockEl);
 
@@ -366,6 +364,27 @@ function setupGlobalClockHandlers() {
       console.warn("[BITD-ALT] Clock has no UUID, cannot save");
       return;
     }
+
+    // Get current value from checked radio
+    const checkedInput = clockEl.querySelector('input[type="radio"]:checked');
+    const currentValue = checkedInput ? parseInt(checkedInput.value) : 0;
+
+    // Toggle behavior:
+    // - If clicking on a segment that's already filled (clickedSegment <= currentValue),
+    //   toggle it OFF by setting value to (clickedSegment - 1)
+    // - If clicking on an unfilled segment, fill TO that segment
+    let newValue;
+    if (clickedSegment <= currentValue) {
+      // Clicking on filled segment - toggle off (clear this segment and all clockwise)
+      newValue = clickedSegment - 1;
+    } else {
+      // Clicking on unfilled segment - fill to this segment
+      newValue = clickedSegment;
+    }
+
+    // Check the appropriate radio and update UI
+    const targetInput = clockEl.querySelector(`input[type="radio"][value="${newValue}"]`);
+    if (targetInput) targetInput.checked = true;
 
     // Optimistic UI update
     optimisticUpdate(clockEl, newValue);
