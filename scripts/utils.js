@@ -947,132 +947,114 @@ export class Utils {
 
   // This doesn't work as expected. It hasn't been updated
   static async modifiedFromPlaybookDefault(actor) {
-    let skillsChanged = false;
-    let newAbilities = false;
-    let ownedAbilities = false;
-    let relationships = false;
-    let acquaintanceList = false;
-    let addedItems = false;
+    const playbookKey = actor?.system?.playbook;
+    if (!playbookKey) return false;
 
-    //get the original playbook
-    let selected_playbook_source;
-    if (actor.system.playbook !== "" && actor.system.playbook) {
-      // selected_playbook_source = await game.packs.get("blades-in-the-dark.class").getDocument(this.system.playbook);
-      selected_playbook_source = await Utils.getItemByType(
-        "class",
-        actor.system.playbook
-      );
+    const playbookSource = await Utils.getItemByType("class", playbookKey);
+    if (!playbookSource) return false;
 
-      let startingAttributes = await Utils.getStartingAttributes(
-        selected_playbook_source.name
-      );
-      let currentAttributes = actor.system.attributes;
-      //vampire ActiveEffects make this think there's been a change to the base skills, so ignore the exp_max field
-      for (const attribute in currentAttributes) {
-        currentAttributes[attribute].exp = 0;
-        delete currentAttributes[attribute].exp_max;
-      }
-      for (const attribute in startingAttributes) {
-        startingAttributes[attribute].exp = 0;
-        delete startingAttributes[attribute].exp_max;
-      }
-      //check for changes
-      //check for exp changes
-      for (const attribute in currentAttributes) {
-        // console.log("Current attribute: ", currentAttributes[attribute]);
-        // console.log("Starting attribute: ", startingAttributes[attribute]);
-        // console.log("Current attribute exp: ", currentAttributes[attribute].exp);
-        // console.log("Starting attribute exp: ", startingAttributes[attribute].exp);
-        if (
-          currentAttributes[attribute].exp !== startingAttributes[attribute].exp
-        ) {
-          skillsChanged = true;
-        }
-      }
+    const playbookName = playbookSource.name;
+    const playbookNameResolved = await Utils.getPlaybookName(playbookKey);
+    const allAbilities = (await Utils.getSourcedItemsByType("ability")) || [];
+    const allAcquaintances = (await Utils.getSourcedItemsByType("npc")) || [];
+    const allItems = (await Utils.getSourcedItemsByType("item")) || [];
 
-      //check for added abilities
-      let all_abilities = await Utils.getSourcedItemsByType("ability");
-      if (all_abilities) {
-        let pb_abilities = all_abilities.filter(
-          (ab) => ab.system.class === selected_playbook_source.name
-        );
-        let my_abilities = actor.system.items.filter(
-          (i) => i.type === "ability"
-        );
-        for (const ability of my_abilities) {
-          if (!pb_abilities.some((ab) => ab.name === ability.name)) {
-            newAbilities = true;
-          }
-          //check for purchased abilities that aren't class defaults
-          if (
-            ability.system.purchased &&
-            ability.system.class_default &&
-            ability.system.class ===
-            (await Utils.getPlaybookName(actor.system.playbook))
-          ) {
-            ownedAbilities = true;
-          }
-        }
-      }
+    const skillsChanged = await Utils._skillsChanged(actor, playbookName);
+    const newAbilities = Utils._newAbilities(actor, playbookName, allAbilities);
+    const ownedAbilities = await Utils._ownedAbilities(actor, playbookNameResolved);
+    const acquaintanceList = Utils._acquaintanceListChanged(actor, playbookName, allAcquaintances);
+    const relationships = Utils._relationshipsChanged(actor);
+    const addedItems = Utils._addedItems(actor, playbookName, allItems);
 
-      //check for non-default acquaintances
-      let all_acquaintances = await Utils.getSourcedItemsByType("npc");
-      if (all_acquaintances) {
-        let pb_acquaintances = all_acquaintances.filter(
-          (acq) => acq.system.associated_class === selected_playbook_source.name
-        );
-        let my_acquaintances = actor.system.acquaintances;
-        for (const my_acq of my_acquaintances) {
-          if (
-            !pb_acquaintances.some(
-              (acq) => acq.id === my_acq.id || acq.id === my_acq._id
-            )
-          ) {
-            acquaintanceList = true;
-          }
-          //check for acquaintance relationships
-          if (my_acq.standing !== "neutral") {
-            relationships = true;
-          }
-        }
-      }
+    const result = {
+      skillsChanged,
+      newAbilities,
+      ownedAbilities,
+      relationships,
+      acquaintanceList,
+      addedItems,
+    };
 
-      //check for added items
-      let all_items = await Utils.getSourcedItemsByType("item");
-      if (all_items) {
-        let pb_items = all_items.filter(
-          (i) => i.system.class === selected_playbook_source.name
-        );
-        let my_non_generic_items = actor.items.filter(
-          (i) => i.type === "item" && i.system.class !== ""
-        );
-        for (const myNGItem of my_non_generic_items) {
-          if (!pb_items.some((i) => i.name === myNGItem.name)) {
-            addedItems = true;
-          }
-        }
+    return Object.values(result).some(Boolean) ? result : false;
+  }
+
+  static _cloneAttributesForComparison(attributes = {}) {
+    const cloned = foundry.utils.deepClone(attributes);
+    for (const key of Object.keys(cloned)) {
+      if (cloned[key]) {
+        cloned[key].exp = 0;
+        delete cloned[key].exp_max;
       }
     }
+    return cloned;
+  }
 
-    if (
-      skillsChanged ||
-      newAbilities ||
-      ownedAbilities ||
-      relationships ||
-      acquaintanceList ||
-      addedItems
-    ) {
-      return {
-        skillsChanged,
-        newAbilities,
-        ownedAbilities,
-        relationships,
-        acquaintanceList,
-        addedItems,
-      };
-    } else {
-      return false;
+  static async _skillsChanged(actor, playbookName) {
+    const startingAttributes = await Utils.getStartingAttributes(playbookName);
+    const currentAttributes = Utils._cloneAttributesForComparison(
+      actor.system.attributes
+    );
+    const startingClone = Utils._cloneAttributesForComparison(startingAttributes);
+
+    for (const attribute of Object.keys(currentAttributes)) {
+      if (
+        currentAttributes[attribute]?.exp !== startingClone[attribute]?.exp
+      ) {
+        return true;
+      }
     }
+    return false;
+  }
+
+  static _newAbilities(actor, playbookName, allAbilities) {
+    const playbookAbilityNames = new Set(
+      allAbilities
+        .filter((ab) => ab.system?.class === playbookName)
+        .map((ab) => ab.name)
+    );
+    const myAbilities = actor.system.items.filter((i) => i.type === "ability");
+    return myAbilities.some((ability) => !playbookAbilityNames.has(ability.name));
+  }
+
+  static async _ownedAbilities(actor, playbookNameResolved) {
+    const myAbilities = actor.system.items.filter((i) => i.type === "ability");
+    for (const ability of myAbilities) {
+      if (
+        ability.system?.purchased &&
+        ability.system?.class_default &&
+        ability.system?.class === playbookNameResolved
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static _acquaintanceListChanged(actor, playbookName, allAcquaintances) {
+    const playbookAcqs = allAcquaintances.filter(
+      (acq) => acq.system?.associated_class === playbookName
+    );
+    const playbookAcqIds = new Set(playbookAcqs.map((acq) => acq.id || acq._id));
+    const myAcqs = actor.system.acquaintances || [];
+    return myAcqs.some(
+      (acq) => !playbookAcqIds.has(acq.id) && !playbookAcqIds.has(acq._id)
+    );
+  }
+
+  static _relationshipsChanged(actor) {
+    const myAcqs = actor.system.acquaintances || [];
+    return myAcqs.some((acq) => acq.standing !== "neutral");
+  }
+
+  static _addedItems(actor, playbookName, allItems) {
+    const playbookItems = allItems.filter(
+      (i) => i.system?.class === playbookName
+    );
+    const playbookItemNames = new Set(playbookItems.map((i) => i.name));
+    const myNonGenericItems = actor.items.filter(
+      (i) => i.type === "item" && i.system?.class !== ""
+    );
+    return myNonGenericItems.some((item) => !playbookItemNames.has(item.name));
   }
 
   /**
