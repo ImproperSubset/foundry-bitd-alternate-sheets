@@ -1268,20 +1268,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
     new ContextMenuClass(root, ".trauma-item", this.traumaListContextMenu, contextMenuOptions);
     new ContextMenuClass(root, ".acquaintance", this.acquaintanceContextMenu, contextMenuOptions);
 
-    html.find('*[contenteditable="true"]').on("paste", (e) => {
-      e.preventDefault();
-      let text = (e.originalEvent || e).clipboardData.getData("text/plain");
-      document.execCommand("insertText", false, text);
-    });
-
-    // Prevent multi-line edits in inline fields (Bio, Name, etc.)
-    html.find('*[contenteditable="true"]').on("keydown", (e) => {
-      // If Enter is pressed
-      if (e.which === 13) {
-        e.preventDefault();
-        $(e.target).blur(); // Trigger save on blur
-      }
-    });
+    Utils.bindContenteditableSanitizers(html);
 
     html.on("click", "button.clearLoad", async (e) => {
       e.preventDefault();

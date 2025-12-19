@@ -1171,4 +1171,24 @@ export class Utils {
       actor.sheet.render(false);
     }
   }
+
+  /**
+   * Attach plain-text paste and single-line enforcement to contenteditable fields.
+   * @param {JQuery} html - root jQuery element for the sheet.
+   */
+  static bindContenteditableSanitizers(html) {
+    if (!html || typeof html.find !== "function") return;
+    const $fields = html.find('*[contenteditable="true"]');
+    $fields.on("paste", (e) => {
+      e.preventDefault();
+      const text = (e.originalEvent || e).clipboardData.getData("text/plain");
+      document.execCommand("insertText", false, text);
+    });
+    $fields.on("keydown", (e) => {
+      if (e.which === 13) {
+        e.preventDefault();
+        $(e.target).blur();
+      }
+    });
+  }
 }

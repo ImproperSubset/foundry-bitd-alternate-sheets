@@ -5,6 +5,10 @@
 @mixin harm-styles {
     .harm {
         padding-bottom: 2px !important;
+
+        .section-body {
+            padding: 0;
+        }
     }
 
     .character-harm {

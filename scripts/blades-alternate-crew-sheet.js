@@ -245,20 +245,7 @@ export class BladesAlternateCrewSheet extends SystemCrewSheet {
 
     if (!this.options.editable) return;
 
-    html.find('*[contenteditable="true"]').on("paste", (e) => {
-      e.preventDefault();
-      let text = (e.originalEvent || e).clipboardData.getData("text/plain");
-      document.execCommand("insertText", false, text);
-    });
-
-    // Prevent multi-line edits in inline fields (Name, Lair, etc.)
-    html.find('*[contenteditable="true"]').on("keydown", (e) => {
-      // If Enter is pressed
-      if (e.which === 13) {
-        e.preventDefault();
-        $(e.target).blur(); // Trigger save on blur
-      }
-    });
+    Utils.bindContenteditableSanitizers(html);
 
     html.find(".inline-input").on("keyup", async (ev) => {
       let input = ev.currentTarget.previousSibling;
