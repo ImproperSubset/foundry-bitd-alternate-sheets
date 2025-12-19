@@ -338,6 +338,34 @@ function setupGlobalClockHandlers() {
       || clockEl.closest('form')?.dataset.uuid;
   }
 
+  const persistClockValue = async (clockEl, updatePath, newValue) => {
+    const uuid = getDocumentUuid(clockEl);
+    if (!uuid) {
+      console.warn("[BITD-ALT] Clock has no UUID, cannot save");
+      return;
+    }
+
+    try {
+      const doc = await fromUuid(uuid);
+      if (doc) {
+        const updateData = { [updatePath]: newValue };
+
+        // For clock actors, also update the img to keep sidebar/token in sync
+        if (doc.type === "🕛 clock" || doc.type === "clock") {
+          const type = doc.system?.type ?? 4;
+          const color = doc.system?.theme ?? "black";
+          const imgPath = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
+          updateData.img = imgPath;
+          updateData["prototypeToken.texture.src"] = imgPath;
+        }
+
+        await doc.update(updateData, { render: false });
+      }
+    } catch (err) {
+      console.warn("[BITD-ALT] Error saving clock:", err);
+    }
+  };
+
   // Handle label clicks on clocks (segment selection with toggle behavior)
   $body.on("click", ".blades-clock label.radio-toggle", async (e) => {
     // Skip if this is a snapshot (historical chat clock)
@@ -358,12 +386,6 @@ function setupGlobalClockHandlers() {
 
     const clickedSegment = parseInt(input.value);
     const updatePath = getUpdatePath(input);
-    const uuid = getDocumentUuid(clockEl);
-
-    if (!uuid) {
-      console.warn("[BITD-ALT] Clock has no UUID, cannot save");
-      return;
-    }
 
     // Get current value from the BACKGROUND IMAGE (more reliable than radio state)
     // The radio can be out of sync due to form handling race conditions
@@ -375,14 +397,7 @@ function setupGlobalClockHandlers() {
     // - If clicking on a segment that's already filled (clickedSegment <= currentValue),
     //   toggle it OFF by setting value to (clickedSegment - 1)
     // - If clicking on an unfilled segment, fill TO that segment
-    let newValue;
-    if (clickedSegment <= currentValue) {
-      // Clicking on filled segment - toggle off (clear this segment and all clockwise)
-      newValue = clickedSegment - 1;
-    } else {
-      // Clicking on unfilled segment - fill to this segment
-      newValue = clickedSegment;
-    }
+    const newValue = clickedSegment <= currentValue ? clickedSegment - 1 : clickedSegment;
 
     // Check the appropriate radio and update UI
     const targetInput = clockEl.querySelector(`input[type="radio"][value="${newValue}"]`);
@@ -391,26 +406,7 @@ function setupGlobalClockHandlers() {
     // Optimistic UI update
     optimisticUpdate(clockEl, newValue);
 
-    // Background save
-    try {
-      const doc = await fromUuid(uuid);
-      if (doc) {
-        const updateData = { [updatePath]: newValue };
-
-        // For clock actors, also update the img to keep sidebar/token in sync
-        if (doc.type === "🕛 clock" || doc.type === "clock") {
-          const type = doc.system?.type ?? 4;
-          const color = doc.system?.theme ?? "black";
-          const imgPath = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
-          updateData.img = imgPath;
-          updateData["prototypeToken.texture.src"] = imgPath;
-        }
-
-        await doc.update(updateData, { render: false });
-      }
-    } catch (err) {
-      console.warn("[BITD-ALT] Error saving clock:", err);
-    }
+    await persistClockValue(clockEl, updatePath, newValue);
   });
 
   // Handle right-click to decrement
@@ -422,13 +418,6 @@ function setupGlobalClockHandlers() {
     e.stopPropagation();
 
     const clockEl = e.currentTarget;
-    const uuid = getDocumentUuid(clockEl);
-
-    if (!uuid) {
-      console.warn("[BITD-ALT] Clock has no UUID, cannot save");
-      return;
-    }
-
     // Get current value from the BACKGROUND IMAGE (more reliable than radio state)
     const bg = clockEl.style.backgroundImage || "";
     const bgMatch = bg.match(/(\d+)clock_(\d+)\./);
@@ -443,26 +432,7 @@ function setupGlobalClockHandlers() {
     // Optimistic UI update
     optimisticUpdate(clockEl, newValue);
 
-    // Background save
-    try {
-      const doc = await fromUuid(uuid);
-      if (doc) {
-        const updateData = { [updatePath]: newValue };
-
-        // For clock actors, also update the img to keep sidebar/token in sync
-        if (doc.type === "🕛 clock" || doc.type === "clock") {
-          const type = doc.system?.type ?? 4;
-          const color = doc.system?.theme ?? "black";
-          const imgPath = `systems/blades-in-the-dark/themes/${color}/${type}clock_${newValue}.svg`;
-          updateData.img = imgPath;
-          updateData["prototypeToken.texture.src"] = imgPath;
-        }
-
-        await doc.update(updateData, { render: false });
-      }
-    } catch (err) {
-      console.warn("[BITD-ALT] Error saving clock:", err);
-    }
+    await persistClockValue(clockEl, updatePath, newValue);
   });
 
   // Stop propagation of change/click events on clock radio inputs

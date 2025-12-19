@@ -2,6 +2,7 @@
 import { Utils, MODULE_ID } from "./utils.js";
 import { queueUpdate } from "./lib/update-queue.js";
 import { getItemSheetClass } from "./compat.js";
+import { guardDropAndHandle, setLocalPropAndRender, sheetDefaultOptions } from "./lib/sheet-helpers.js";
 
 const BaseItemSheet = getItemSheetClass();
 
@@ -54,31 +55,21 @@ export class BladesAlternateItemSheet extends BaseItemSheet {
 
   /** @override */
   static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
+    return sheetDefaultOptions(super.defaultOptions, {
       classes: ["blades-alt", "sheet", "item"],
       template: "modules/bitd-alternate-sheets/templates/item-sheet.html",
       width: 400,
       height: 600,
-      // tabs: [{navSelector: ".tabs", contentSelector: ".tab-content", initial: "playbook"}]
     });
   }
 
   /** @override **/
   async _onDropItem(event, droppedItem) {
-    await super._onDropItem(event, droppedItem);
-    if (!this.actor.isOwner) {
-      ui.notifications.error(
-        `You do not have sufficient permissions to edit this character. Please speak to your GM if you feel you have reached this message in error.`,
-        { permanent: true }
-      );
-      return false;
-    }
-    await this.handleDrop(event, droppedItem);
+    await guardDropAndHandle(this, super._onDropItem.bind(this), event, droppedItem);
   }
 
   setLocalProp(propName, value) {
-    this[propName] = value;
-    this.render(false);
+    setLocalPropAndRender(this, propName, value);
   }
 
   /** @override */
