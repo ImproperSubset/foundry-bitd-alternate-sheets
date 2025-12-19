@@ -172,12 +172,9 @@
               </section>
 
               <section class="dock-section" data-section-key="items">
-                <section
-                  class="playbook-items item-list section-block {{#if (lookup collapsedSections 'items')}}collapsed{{/if}}"
-                  data-section-key="items">
-                  {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
+                {{> "modules/bitd-alternate-sheets/templates/parts/item-list-section.html"
+                  sectionClass="playbook-items"
                   label=(localize "bitd-alt.specialItems")
-                  flex=true
                   showFilter=false
                   isFiltered=showFilteredItems
                   filterTarget="items"
@@ -188,27 +185,16 @@
                   addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-group-by="system.class"
                   data-item-scope="playbook" data-filter-playbook="{{selected_playbook.name}}"'
                   dockable=true
-                  }}
-                  <div class="section-body">
-                    <div class="two-col-list">
-                      {{#each my_items as |item index|}}
-                      {{#with ../actor as |actor|}}
-                      {{> "modules/bitd-alternate-sheets/templates/parts/item.html" actor=actor item=item
-                      allow_edit=../../allow_edit}}
-                      {{/with}}
-                      {{/each}}
-                    </div>
-                  </div>
-                </section>
+                  items=my_items
+                  actor=actor
+                  allow_edit=allow_edit
+                }}
               </section>
 
               <section class="dock-section" data-section-key="general-items">
-                <section
-                  class="all-items item-list section-block {{#if (lookup collapsedSections 'general-items')}}collapsed{{/if}}"
-                  data-section-key="general-items">
-                  {{> "modules/bitd-alternate-sheets/templates/parts/section-controls.html"
+                {{> "modules/bitd-alternate-sheets/templates/parts/item-list-section.html"
+                  sectionClass="all-items"
                   label=(localize "bitd-alt.items")
-                  flex=true
                   showFilter=false
                   isFiltered=false
                   filterTarget="general-items"
@@ -218,18 +204,10 @@
                   addClass="chooser-add-item add-button"
                   addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-item-scope="general"'
                   dockable=true
-                  }}
-                  <div class="section-body">
-                    <div class="two-col-list">
-                      {{#each generic_items as |item index|}}
-                      {{#with ../actor as |actor|}}
-                      {{> "modules/bitd-alternate-sheets/templates/parts/item.html" actor=actor item=item
-                      allow_edit=../../allow_edit}}
-                      {{/with}}
-                      {{/each}}
-                    </div>
-                  </div>
-                </section>
+                  items=generic_items
+                  actor=actor
+                  allow_edit=allow_edit
+                }}
               </section>
             </div>
 
