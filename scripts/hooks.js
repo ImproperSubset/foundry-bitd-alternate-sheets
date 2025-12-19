@@ -186,18 +186,7 @@ export async function registerHooks() {
 async function replaceClockLinks(container, messageContent = null) {
   if (!container) return;
 
-  // Parse snapshot values from message content if provided
-  // Format: @UUID[Actor.xxx]{name|snapshot:value}
-  const snapshotValues = new Map();
-  if (messageContent) {
-    const snapshotPattern = /@UUID\[([^\]]+)\]\{[^|]*\|snapshot:(\d+)\}/g;
-    let match;
-    while ((match = snapshotPattern.exec(messageContent)) !== null) {
-      snapshotValues.set(match[1], parseInt(match[2]));
-    }
-  }
-
-  // Find all content-link anchors that might be clock actors
+  const snapshotValues = parseClockSnapshotValues(messageContent);
   const links = container.querySelectorAll('a.content-link[data-type="Actor"]');
 
   for (const link of links) {
@@ -206,57 +195,76 @@ async function replaceClockLinks(container, messageContent = null) {
 
     try {
       const doc = await fromUuid(uuid);
-      if (!doc) continue;
+      if (!doc || !isClockActor(doc)) continue;
 
-      // Check if it's a clock actor
-      if (doc.type !== "🕛 clock" && doc.type !== "clock") continue;
+      const model = getClockRenderModel(doc, uuid, snapshotValues);
+      const clockHtml = buildClockHtml(model, doc.name);
+      const clockDiv = createClockDiv(uuid, model.isSnapshot, clockHtml);
 
-      // Generate clock HTML with full interactive structure
-      const type = doc.system?.type ?? 4;
-      // Use snapshot value if available, otherwise use current value
-      const value = snapshotValues.has(uuid) ? snapshotValues.get(uuid) : (doc.system?.value ?? 0);
-      const color = doc.system?.theme ?? "black";
-      const uniq_id = doc.id;
-      const renderInstance = foundry.utils.randomID();
-      const parameter_name = `system.value-${uniq_id}-${renderInstance}`;
-
-      const clockDiv = document.createElement("div");
-      clockDiv.className = "blades-clock-container linkedClock";
-      clockDiv.dataset.uuid = uuid;
-      // Mark if this is a historical snapshot (non-interactive in chat)
-      if (snapshotValues.has(uuid)) {
-        clockDiv.dataset.snapshot = "true";
-      }
-
-      // Build HTML with radio inputs and labels for segment clicking
-      let clockHtml = `<div id="blades-clock-${uniq_id}-${renderInstance}" 
-           class="blades-clock clock-${type} clock-${type}-${value}" 
-           style="background-image:url('systems/blades-in-the-dark/themes/${color}/${type}clock_${value}.svg'); width: 100px; height: 100px;"
-           data-uuid="${uuid}">`;
-
-      // Zero input (hidden)
-      const zero_checked = (parseInt(value) === 0) ? 'checked' : '';
-      clockHtml += `<input type="radio" value="0" id="clock-0-${uniq_id}-${renderInstance}" data-dType="String" name="${parameter_name}" ${zero_checked}>`;
-
-      // Segment inputs and labels
-      for (let i = 1; i <= parseInt(type); i++) {
-        const checked = (parseInt(value) === i) ? 'checked' : '';
-        clockHtml += `<input type="radio" value="${i}" id="clock-${i}-${uniq_id}-${renderInstance}" data-dType="String" name="${parameter_name}" ${checked}>`;
-        clockHtml += `<label class="radio-toggle" for="clock-${i}-${uniq_id}-${renderInstance}"></label>`;
-      }
-
-      clockHtml += `</div>`;
-      clockHtml += `<br/><span class="clock-name">${doc.name}</span>`;
-
-      clockDiv.innerHTML = clockHtml;
-
-      // Replace the link with the clock
       link.replaceWith(clockDiv);
-
     } catch (e) {
       console.warn("[BITD-ALT] Error processing clock link:", e);
     }
   }
+}
+
+function parseClockSnapshotValues(messageContent) {
+  const snapshotValues = new Map();
+  if (!messageContent) return snapshotValues;
+  const snapshotPattern = /@UUID\[([^\]]+)\]\{[^|]*\|snapshot:(\d+)\}/g;
+  let match;
+  while ((match = snapshotPattern.exec(messageContent)) !== null) {
+    snapshotValues.set(match[1], parseInt(match[2]));
+  }
+  return snapshotValues;
+}
+
+function isClockActor(doc) {
+  return doc?.type === "🕛 clock" || doc?.type === "clock";
+}
+
+function getClockRenderModel(doc, uuid, snapshotValues) {
+  const type = parseInt(doc.system?.type ?? 4);
+  const snapshotValue = snapshotValues.has(uuid) ? snapshotValues.get(uuid) : undefined;
+  const value = snapshotValue !== undefined ? parseInt(snapshotValue) : parseInt(doc.system?.value ?? 0);
+  const color = doc.system?.theme ?? "black";
+  const uniq_id = doc.id;
+  const renderInstance = foundry.utils.randomID();
+  const parameter_name = `system.value-${uniq_id}-${renderInstance}`;
+  const isSnapshot = snapshotValue !== undefined;
+  return { type, value, color, uniq_id, renderInstance, parameter_name, isSnapshot };
+}
+
+function buildClockHtml(model, name) {
+  const { type, value, color, uniq_id, renderInstance, parameter_name } = model;
+  let clockHtml = `<div id="blades-clock-${uniq_id}-${renderInstance}" 
+           class="blades-clock clock-${type} clock-${type}-${value}" 
+           style="background-image:url('systems/blades-in-the-dark/themes/${color}/${type}clock_${value}.svg'); width: 100px; height: 100px;"
+           data-uuid="${uniq_id}">`;
+
+  const zero_checked = value === 0 ? "checked" : "";
+  clockHtml += `<input type="radio" value="0" id="clock-0-${uniq_id}-${renderInstance}" data-dType="String" name="${parameter_name}" ${zero_checked}>`;
+
+  for (let i = 1; i <= type; i++) {
+    const checked = value === i ? "checked" : "";
+    clockHtml += `<input type="radio" value="${i}" id="clock-${i}-${uniq_id}-${renderInstance}" data-dType="String" name="${parameter_name}" ${checked}>`;
+    clockHtml += `<label class="radio-toggle" for="clock-${i}-${uniq_id}-${renderInstance}"></label>`;
+  }
+
+  clockHtml += `</div>`;
+  clockHtml += `<br/><span class="clock-name">${name}</span>`;
+  return clockHtml;
+}
+
+function createClockDiv(uuid, isSnapshot, html) {
+  const clockDiv = document.createElement("div");
+  clockDiv.className = "blades-clock-container linkedClock";
+  clockDiv.dataset.uuid = uuid;
+  if (isSnapshot) {
+    clockDiv.dataset.snapshot = "true";
+  }
+  clockDiv.innerHTML = html;
+  return clockDiv;
 }
 
 /**
