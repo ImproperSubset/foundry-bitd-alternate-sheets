@@ -156,7 +156,7 @@ async function openSmartEditChooser(ctx, choices) {
 }
 
 function _resolveItemChooserContext(sheet, filterPlaybook, scope) {
-  const isPlaybookScope = scope === "playbook";
+  const isPlaybookScope = scope === "playbook" || scope === "all";
   const playbookNameRaw = isPlaybookScope
     ? (filterPlaybook ||
       sheet.actor?.items?.find((i) => i.type === "class")?.name ||
@@ -169,6 +169,9 @@ function _resolveItemChooserContext(sheet, filterPlaybook, scope) {
 }
 
 async function _getItemChooserCandidates(sheet, ctx) {
+  if (ctx.scope === "all") {
+    return _getAllScopeItems(sheet, ctx);
+  }
   return ctx.isPlaybookScope
     ? _getPlaybookScopeItems(sheet, ctx)
     : _getGeneralScopeItems(sheet);
@@ -205,6 +208,12 @@ async function _getPlaybookScopeItems(sheet, ctx) {
     return Boolean(cls);
   });
   return allClassed;
+}
+
+async function _getAllScopeItems(sheet, ctx) {
+  const generalItems = await _getGeneralScopeItems(sheet);
+  const classedItems = await _getPlaybookScopeItems(sheet, ctx);
+  return [...classedItems, ...generalItems];
 }
 
 function _partitionAndOrderCandidates(items, ctx) {
