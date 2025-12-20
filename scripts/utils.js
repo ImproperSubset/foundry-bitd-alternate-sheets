@@ -78,18 +78,20 @@ export class Utils {
         actor.getFlag(MODULE_ID, "multiAbilityProgress")
       ) || {};
 
-    // If value hasn't changed, do nothing.
+    // Check if update is needed
     if (existingProgress[key] === normalized) return;
 
     if (normalized === 0) {
       if (existingProgress[key] !== undefined) {
-        delete existingProgress[key];
+        await actor.update({
+          [`flags.${MODULE_ID}.multiAbilityProgress.-=${key}`]: null
+        }, { render: false });
       }
     } else {
-      existingProgress[key] = normalized;
+      await actor.update({
+        [`flags.${MODULE_ID}.multiAbilityProgress.${key}`]: normalized
+      }, { render: false });
     }
-
-    await actor.setFlag(MODULE_ID, "multiAbilityProgress", existingProgress);
   }
 
   static capitalizeFirstLetter(string) {

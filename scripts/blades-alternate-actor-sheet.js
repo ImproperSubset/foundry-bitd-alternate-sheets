@@ -1433,50 +1433,38 @@ export class BladesAlternateActorSheet extends BladesSheet {
       checkboxList.forEach((el) => el.setAttribute("disabled", "disabled"));
 
       try {
-        await Profiler.time(
-          "abilityToggle",
-          async () => {
-            if (!hadProgress && willHaveProgress) {
-              if (!abilityOwnedId) {
-                await Utils.toggleOwnership(true, this.actor, "ability", abilityId);
-              }
-            } else if (hadProgress && !willHaveProgress) {
-              const targetId = abilityOwnedId || abilityId;
-              await Utils.toggleOwnership(false, this.actor, "ability", targetId);
-            }
 
-            abilityBlock.dataset.abilityProgress = String(targetProgress);
-            if (abilityKey) {
-              await Utils.updateAbilityProgressFlag(
-                this.actor,
-                abilityKey,
-                targetProgress
-              );
-            }
-
-            checkboxList.forEach((el) => {
-              const slot = Number(el.dataset.abilitySlot) || 1;
-              const shouldCheck = slot <= targetProgress;
-              el.checked = shouldCheck;
-              if (shouldCheck) {
-                el.setAttribute("checked", "checked");
-              } else {
-                el.removeAttribute("checked");
-              }
-            });
-
-            const ownedIdAfterUpdate = this._findOwnedAbilityId(abilityName);
-            abilityBlock.dataset.abilityOwnedId = ownedIdAfterUpdate || "";
-          },
-          {
-            actorId: this.actor.id,
-            abilityId,
-            abilityName,
-            targetProgress,
-            hadProgress,
-            willHaveProgress,
+        if (!hadProgress && willHaveProgress) {
+          if (!abilityOwnedId) {
+            await Utils.toggleOwnership(true, this.actor, "ability", abilityId);
           }
-        );
+        } else if (hadProgress && !willHaveProgress) {
+          const targetId = abilityOwnedId || abilityId;
+          await Utils.toggleOwnership(false, this.actor, "ability", targetId);
+        }
+
+        abilityBlock.dataset.abilityProgress = String(targetProgress);
+        if (abilityKey) {
+          await Utils.updateAbilityProgressFlag(
+            this.actor,
+            abilityKey,
+            targetProgress
+          );
+        }
+
+        checkboxList.forEach((el) => {
+          const slot = Number(el.dataset.abilitySlot) || 1;
+          const shouldCheck = slot <= targetProgress;
+          el.checked = shouldCheck;
+          if (shouldCheck) {
+            el.setAttribute("checked", "checked");
+          } else {
+            el.removeAttribute("checked");
+          }
+        });
+
+        const ownedIdAfterUpdate = this._findOwnedAbilityId(abilityName);
+        abilityBlock.dataset.abilityOwnedId = ownedIdAfterUpdate || "";
       } finally {
         checkboxList.forEach((el) => el.removeAttribute("disabled"));
       }
