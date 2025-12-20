@@ -271,14 +271,22 @@
           font-size: 0.9em;
           color: #fff;
         }
+      }
 
-        &.over-max {
+      // Over-max: turn entire banner red with white text
+      &.over-max {
+        background-color: $red !important;
 
-          label,
-          select,
-          .load-stats {
-            color: $red;
-          }
+        label,
+        .load-stats,
+        span {
+          color: #fff !important;
+        }
+
+        select {
+          background-color: color.adjust($red, $lightness: -10%) !important;
+          color: #fff !important;
+          border-color: color.adjust($red, $lightness: -20%) !important;
         }
       }
     }
@@ -910,15 +918,6 @@
                 .load-stats {
                   font-size: 0.9em;
                   color: #fff;
-                }
-
-                &.over-max {
-
-                  label,
-                  select,
-                  .load-stats {
-                    color: $red;
-                  }
                 }
               }
             }

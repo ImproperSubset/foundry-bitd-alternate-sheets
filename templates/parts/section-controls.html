@@ -1,4 +1,5 @@
-<header class="full-bar {{#if flex}}flex-header context-items{{/if}}">
+<header
+  class="full-bar {{#if flex}}flex-header context-items{{/if}} {{#if showLoadSelector}}{{#if (gt loadout max_load)}}over-max{{/if}}{{/if}}">
   {{#if dockable}}
   <a class="dock-handle" aria-label="{{localize 'bitd-alt.DragToReorder'}}"><i class="fas fa-grip-vertical"></i></a>
   {{/if}}

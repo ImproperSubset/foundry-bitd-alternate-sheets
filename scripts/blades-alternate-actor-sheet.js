@@ -1317,12 +1317,13 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
           // Update Classes for Overburdened (visual only)
           const loadContainer = loadStatsEl.closest(".load-inline");
-          if (loadContainer.length) {
-            if (currentLoad > maxLoad) {
-              loadContainer.addClass("over-max");
-            } else {
-              loadContainer.removeClass("over-max");
-            }
+          const headerEl = loadStatsEl.closest("header.full-bar");
+          if (currentLoad > maxLoad) {
+            loadContainer.addClass("over-max");
+            headerEl.addClass("over-max");
+          } else {
+            loadContainer.removeClass("over-max");
+            headerEl.removeClass("over-max");
           }
         }
       }
