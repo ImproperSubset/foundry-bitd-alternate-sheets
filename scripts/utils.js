@@ -487,6 +487,10 @@ export class Utils {
       if (state) {
         let all_of_type = await Utils.getSourcedItemsByType(type);
         let checked_item = all_of_type.find((item) => item.id == id);
+        if (!checked_item) {
+          console.debug(`${MODULE_ID} | Utils.toggleOwnership: Item with ID ${id} not found in sourced items list. Target may already be owned.`);
+          return;
+        }
         let added_item = await actor.createEmbeddedDocuments("Item", [
           {
             type: checked_item.type,
@@ -727,19 +731,30 @@ export class Utils {
     let all_game_items = await Utils.getSourcedItemsByType(type);
     let sheet_items;
 
-    sheet_items = all_game_items.filter((item) => {
-      if (item.system.class !== undefined) {
-        if (item.system.class === "" && type === "ability") {
-          return false;
+    sheet_items = all_game_items
+      .filter((item) => {
+        if (item.system.class !== undefined) {
+          if (item.system.class === "" && type === "ability") {
+            return false;
+          } else {
+            return item.system.class === filter_playbook;
+          }
+        } else if (item.system.associated_class) {
+          return item.system.associated_class === filter_playbook;
         } else {
-          return item.system.class === filter_playbook;
+          return false;
         }
-      } else if (item.system.associated_class) {
-        return item.system.associated_class === filter_playbook;
-      } else {
-        return false;
-      }
-    });
+      })
+      .map((item) => {
+        // Clone to plain object and mark as virtual
+        const data = item.toObject ? item.toObject() : foundry.utils.deepClone(item);
+        data._id = item.id;
+        if (!data.system) data.system = {};
+        data.system.virtual = true;
+        data.owned = false;
+        return data;
+      });
+
     sheet_items.sort((a, b) => {
       if (a.name.includes("Veteran") || b.system.class_default) {
         return 1;
@@ -754,27 +769,41 @@ export class Utils {
         ? 1
         : -1;
     });
-    sheet_items = sheet_items.map((el) => {
-      el.system.virtual = true;
-      return el;
-    });
+
     if (include_owned_items) {
-      owned_items = data.actor.items.filter((item) => {
-        if (item.type !== type) return false;
-        const itemClass = item.system?.class ?? item.system?.associated_class ?? "";
-        if (filter_playbook) {
-          // When filtering for a playbook, only include owned items that match that playbook
-          if (!itemClass || itemClass !== filter_playbook) return false;
-        } else {
-          // General list: only include classless items
-          if (itemClass) return false;
-        }
-        item.owned = true;
-        return true;
-      });
+      owned_items = data.actor.items
+        .filter((item) => {
+          if (item.type !== type) return false;
+          const itemClass =
+            item.system?.class ?? item.system?.associated_class ?? "";
+
+          // Abilities should always be included if owned, regardless of playbook filtering
+          if (type === "ability") {
+            return true;
+          }
+
+          if (filter_playbook) {
+            // When filtering for a playbook, only include owned items that match that playbook
+            if (!itemClass || itemClass !== filter_playbook) return false;
+          } else {
+            // General list: only include classless items
+            if (itemClass) return false;
+          }
+          return true;
+        })
+        .map((item) => {
+          // Clone to plain object and mark as NOT virtual
+          const data = item.toObject ? item.toObject() : foundry.utils.deepClone(item);
+          data._id = item.id;
+          if (!data.system) data.system = {};
+          data.system.virtual = false;
+          data.owned = true;
+          return data;
+        });
     } else {
       owned_items = [];
     }
+
     virtual_list = sheet_items;
     for (const item of owned_items) {
       if (

@@ -212,15 +212,21 @@ export class BladesAlternateActorSheet extends BladesSheet {
             label: game.i18n.localize("BITD.Add"),
             callback: async (html) => {
               let itemInputs = html.find("input:checked");
-              let items = [];
+              let itemsToCreate = [];
               for (const itemelement of itemInputs) {
                 let item = await Utils.getItemByType(
                   item_type,
                   itemelement.dataset[item_type + "Id"]
                 );
-                items.push(item);
+                if (item) {
+                  // Ensure we pass a plain object for document creation
+                  const itemData = item.toObject ? item.toObject() : foundry.utils.deepClone(item);
+                  itemsToCreate.push(itemData);
+                }
               }
-              this.actor.createEmbeddedDocuments("Item", items);
+              if (itemsToCreate.length > 0) {
+                await this.actor.createEmbeddedDocuments("Item", itemsToCreate);
+              }
             },
           },
           cancel: {
@@ -1420,7 +1426,9 @@ export class BladesAlternateActorSheet extends BladesSheet {
           "abilityToggle",
           async () => {
             if (!hadProgress && willHaveProgress) {
-              await Utils.toggleOwnership(true, this.actor, "ability", abilityId);
+              if (!abilityOwnedId) {
+                await Utils.toggleOwnership(true, this.actor, "ability", abilityId);
+              }
             } else if (hadProgress && !willHaveProgress) {
               const targetId = abilityOwnedId || abilityId;
               await Utils.toggleOwnership(false, this.actor, "ability", targetId);
