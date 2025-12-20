@@ -207,7 +207,8 @@ export const registerHandlebarsHelpers = function () {
         : null);
 
     const load = item?.system?.load ?? item?.load;
-    if (load === 0 || load === "0" || load === undefined) return true;
+    const defaultEquipped = load === 0 || load === "0" || load === undefined;
+    if (defaultEquipped) return true;
 
     // Fallback to item.equipped if present on the document
     return Boolean(item?.system?.equipped);
