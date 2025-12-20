@@ -8,17 +8,6 @@
       <i class="fas {{#if isCollapsed}}fa-caret-right{{else}}fa-caret-down{{/if}}"></i>
     </a>
     <span>{{label}}</span>
-  </div>
-  <div class="header-right">
-    {{#if showLoadSelector}}
-    <div class="load-inline header-control">
-      <label for="{{sectionKey}}-load-selector">{{localize "BITD.Load"}}:</label>
-      <select id="{{sectionKey}}-load-selector" name="system.selected_load_level">
-        {{selectOptions load_levels selected=system.selected_load_level localize=true}}
-      </select>
-      <span class="load-stats">{{loadout}}/{{max_load}}</span>
-    </div>
-    {{/if}}
     {{#if showFilter}}
     <a class="filter-toggle {{#if isFiltered}}active{{/if}}" data-action="toggle-filter"
       data-filter-target="{{filterTarget}}" data-tooltip="Show checked only">
@@ -29,6 +18,17 @@
     <a class="{{addClass}}" {{#if addDataAttrs}}{{{addDataAttrs}}}{{/if}}>
       <i class="fas fa-plus"></i>
     </a>
+    {{/if}}
+  </div>
+  <div class="header-right">
+    {{#if showLoadSelector}}
+    <div class="load-inline header-control">
+      <label for="{{sectionKey}}-load-selector">{{localize "BITD.Load"}}:</label>
+      <select id="{{sectionKey}}-load-selector" name="system.selected_load_level">
+        {{selectOptions load_levels selected=system.selected_load_level localize=true}}
+      </select>
+      <span class="load-stats">{{loadout}}/{{max_load}}</span>
+    </div>
     {{/if}}
   </div>
 </header>
