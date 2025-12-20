@@ -138,54 +138,60 @@ section.flex {
   font-style: italic;
 }
 
+/* Shared multi-checkbox container styling */
+// IMPORTANT: Firefox has a known bug with flex containers + checkbox inputs where
+// it miscalculates width: max-content, causing overflow. Using inline-block here
+// instead of flex/inline-flex sidesteps this issue entirely and works correctly
+// in all browsers. DO NOT change to display: flex without extensive testing.
+// See CONTRIBUTING.md "Firefox flexbox + checkbox width calculation bug" for details.
+// Shared checkbox container for abilities, crew upgrades, and character items
+:is(.ability-checkboxes, .item-checkboxes) {
+  display: inline-block;
+  white-space: nowrap;
+  margin-right: 0.5em;
+  vertical-align: top;
+
+  .join-line {
+    border-bottom: 2px solid var(--alt-border-strong);
+    width: 0.5em;
+    height: 1px;
+    display: inline-block;
+    vertical-align: top;
+    margin-top: 0.5em;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    line-height: 0;
+  }
+
+  :is(.ability-checkbox, .crew-upgrade-checkbox, .crew-ability-checkbox, .item-checkbox) {
+    margin: 0;
+    padding: 0;
+    position: relative;
+    width: 1em;
+    min-width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: top;
+  }
+}
+
+/* Shared block styling for abilities, upgrades, and items */
+:is(.ability-block, .item-block) {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 1;
+}
+
 /* Shared ability list styling */
 .ability-list {
   .ability-block {
-    display: flex;
-    align-items: flex-start;
-    position: relative;
-    padding: 5px 5px 5px 10px;
-    width: 100%;
-    box-sizing: border-box;
-
     &:nth-child(even) {
       background-color: rgba(255, 255, 255, 0.3);
-    }
-
-    // IMPORTANT: Firefox has a known bug with flex containers + checkbox inputs where
-    // it miscalculates width: max-content, causing overflow. Using inline-block here
-    // instead of flex/inline-flex sidesteps this issue entirely and works correctly
-    // in all browsers. DO NOT change to display: flex without extensive testing.
-    // See CONTRIBUTING.md "Firefox flexbox + checkbox width calculation bug" for details.
-    .ability-checkboxes {
-      display: inline-block;
-      white-space: nowrap;
-      margin-right: 0.5em;
-      vertical-align: top;
-
-      .join-line {
-        border-bottom: 2px solid var(--alt-border-strong);
-        width: 0.5em;
-        height: 1px;
-        display: inline-block;
-        vertical-align: top;
-        margin-top: 0.5em;
-        margin-left: 0;
-        margin-right: 0;
-        margin-bottom: 0;
-        line-height: 0;
-      }
-
-      :is(.ability-checkbox, .crew-upgrade-checkbox, .crew-ability-checkbox) {
-        margin: 0;
-        padding: 0;
-        position: relative;
-        width: 1em;
-        min-width: 1em;
-        height: 1em;
-        display: inline-block;
-        vertical-align: top;
-      }
     }
   }
 

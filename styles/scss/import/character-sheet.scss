@@ -273,6 +273,7 @@
         }
 
         &.over-max {
+
           label,
           select,
           .load-stats {
@@ -733,49 +734,27 @@
                 font-style: italic;
               }
 
+              // Base .item-block styles (flex, padding, etc.) inherited from
+              // :is(.ability-block, .item-block) in general-styles.scss
+              // Item-specific overrides only below
               .item-block {
-                padding: 2px 5px;
-                //padding-left: 5px;
-                //padding-right: 1em;
-                //padding-bottom: .15em;
-                position: relative;
-                line-height: 0;
-
                 &:nth-child(even) {
                   background-color: rgba(0, 0, 0, 0.1);
                 }
 
-                .checkbox {
-                  position: relative;
-                  display: inline-block;
-                  width: 100%;
-                }
-
                 .item-name {
-                  width: 100%;
-                  position: relative;
-                  line-height: 1em;
+                  margin: 0;
+                  line-height: 0.8em;
+                  font-size: 1em;
                 }
 
-                //this is probably not very robust. Figure something else out.
-                .join-line {
-                  border: 1px solid $darkgray;
-                  width: 1em;
-                  display: inline-block;
-                  height: 0px;
-                  margin: 0 -0.5em;
-                  top: calc(-0.5em + 5px);
-                  position: relative;
-                  z-index: 0;
-                }
+                .delete-button {
+                  margin-left: auto;
+                  opacity: 0.5;
 
-
-
-                input {
-                  margin-left: 0;
-                  position: relative;
-                  z-index: 10;
-                  bottom: 0px;
+                  &:hover {
+                    opacity: 1;
+                  }
                 }
               }
             }
@@ -872,18 +851,26 @@
 
             .item-list {
               .two-col-list {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                column-gap: 0.25em;
-                row-gap: 0;
+                // Use CSS columns for column-first flow (items go down, then wrap to next column)
+                columns: 2;
+                column-gap: 0;
+                column-rule: 1px solid $almost_black; // Vertical divider line
+                width: 100%;
 
                 .item-block {
+                  // Prevent items from breaking across columns
+                  break-inside: avoid;
+                  // Force items to fill full width within the column
+                  width: 100%;
+                  box-sizing: border-box;
+                  // Remove right padding to align with container edge
+                  padding-right: 0;
                   background: none;
-                }
 
-                .item-block:nth-child(4n + 1),
-                .item-block:nth-child(4n + 2) {
-                  background-color: rgba(0, 0, 0, 0.1);
+                  // Zebra striping applied via JS classes for proper row alignment across columns
+                  &.zebra-odd {
+                    background-color: rgba(0, 0, 0, 0.1);
+                  }
                 }
               }
             }
@@ -898,10 +885,11 @@
 
             .all-items {
               .item-subsection {
-                padding: 0.25em 0.4em;
+                padding: 0 0 0 0.4em; // Only left padding
 
                 &:first-of-type {
                   background: $lightgray;
+                  border-bottom: 1px solid $almost_black; // Divider between classed and unclassed items
                 }
               }
 
@@ -925,6 +913,7 @@
                 }
 
                 &.over-max {
+
                   label,
                   select,
                   .load-stats {

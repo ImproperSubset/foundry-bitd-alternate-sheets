@@ -749,7 +749,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
     }
     if (equipped) {
       for (const i of Object.values(equipped)) {
-        loadout += parseInt(i.load);
+        if (!i) continue;
+        loadout += parseInt(i.load) || 0;
       }
     }
 
@@ -1124,6 +1125,34 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     Utils.bindCollapseToggles(html, this);
 
+    // Apply zebra striping for two-column layouts with column-first flow
+    // CSS columns flow items down first column, then second, so we need JS to
+    // determine which items are on the same visual row and apply consistent backgrounds
+    html.find(".two-col-list").each((_, container) => {
+      const items = container.querySelectorAll(".item-block");
+      const totalItems = items.length;
+      const itemsPerColumn = Math.ceil(totalItems / 2);
+
+      items.forEach((item, index) => {
+        // Determine which visual row this item is on
+        // Items 0..itemsPerColumn-1 are in column 1
+        // Items itemsPerColumn..totalItems-1 are in column 2
+        const visualRow = index < itemsPerColumn
+          ? index
+          : index - itemsPerColumn;
+
+        // Remove any existing zebra class
+        item.classList.remove("zebra-even", "zebra-odd");
+
+        // Add appropriate class based on visual row
+        if (visualRow % 2 === 0) {
+          item.classList.add("zebra-even");
+        } else {
+          item.classList.add("zebra-odd");
+        }
+      });
+    });
+
     // Everything below here is only needed if the sheet is editable
     if (!this.options.editable) return;
 
@@ -1210,6 +1239,98 @@ export class BladesAlternateActorSheet extends BladesSheet {
       ability.sheet.render(true);
     });
 
+    // Handle Item/Load Toggling
+    // Multi-cost items (e.g., Heavy with load 3) are treated as a single unit:
+    // clicking ANY checkbox toggles ALL checkboxes for that item together.
+    html.find(".item-checkbox").on("click change", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      // If it's the change event, we just want to stop it from bubbling
+      // The logic is handled by the click event
+      if (ev.type === "change") return;
+
+      const input = ev.currentTarget;
+      const itemBlock = input.closest(".item-block");
+      const itemId = itemBlock?.dataset?.itemId;
+
+      if (!itemId) return;
+
+      // Read itemLoad from the DOM element's data-load attribute
+      // This works for both owned items AND virtual items (shown from compendium)
+      const itemLoad = parseInt(itemBlock.dataset.load) || 0;
+
+      // Replicate 'item-equipped' helper logic to determine current status
+      const equippedItemsFlag = this.actor.getFlag("bitd-alternate-sheets", "equipped-items") || {};
+      let isCurrentlyEquipped = false;
+
+      if (Object.prototype.hasOwnProperty.call(equippedItemsFlag, itemId)) {
+        isCurrentlyEquipped = !!equippedItemsFlag[itemId];
+      } else {
+        // Fallback checks
+        const item = this.actor.items.get(itemId);
+        if (itemLoad === 0) isCurrentlyEquipped = true;
+        else isCurrentlyEquipped = !!item?.system?.equipped;
+      }
+
+      const desiredState = !isCurrentlyEquipped;
+
+      // IDEMPOTENCY CHECK
+      // If we have already optimistically toggled this item to the desired state in this render cycle,
+      // ignore subsequent clicks (like the label ghost click caused by CSS overlap).
+      // We store the pending state on the DOM element itself.
+      if (itemBlock.dataset.optimisticState === String(desiredState)) {
+        return;
+      }
+      itemBlock.dataset.optimisticState = String(desiredState);
+
+      // OPTIMISTIC UPDATE
+      // 1. Update all checkboxes for this item visually immediately
+      // This satisfies the "Click one check all" requirement for multi-load items.
+      // We use requestAnimationFrame to ensure our state setting happens AFTER
+      // the browser's default click handling, which may have toggled the clicked checkbox.
+      const allItemCheckboxes = itemBlock.querySelectorAll("input[type='checkbox']");
+      requestAnimationFrame(() => {
+        for (const cb of allItemCheckboxes) {
+          cb.checked = desiredState;
+        }
+      });
+
+      // 2. Update Load Stats
+      if (itemLoad > 0) {
+        const loadStatsEl = this.element.find(".load-stats");
+        if (loadStatsEl.length) {
+          const text = loadStatsEl.text(); // e.g., "3/5"
+          const [currentLoadStr, maxLoadStr] = text.split("/");
+          let currentLoad = parseInt(currentLoadStr) || 0;
+          const maxLoad = parseInt(maxLoadStr) || 0;
+
+          // Adjust load
+          if (desiredState) {
+            currentLoad += itemLoad;
+          } else {
+            currentLoad = Math.max(0, currentLoad - itemLoad);
+          }
+
+          // Update Text
+          loadStatsEl.text(`${currentLoad}/${maxLoad}`);
+
+          // Update Classes for Overburdened (visual only)
+          const loadContainer = loadStatsEl.closest(".load-inline");
+          if (loadContainer.length) {
+            if (currentLoad > maxLoad) {
+              loadContainer.addClass("over-max");
+            } else {
+              loadContainer.removeClass("over-max");
+            }
+          }
+        }
+      }
+
+      // 3. Persist to actor flags
+      await Utils.toggleOwnership(desiredState, this.actor, "item", itemId);
+    });
+
     // Delete Inventory Item -- not used in new design
     html.find(".delete-button").click(async (ev) => {
       const element = $(ev.currentTarget);
@@ -1270,20 +1391,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
       await this._openCrewSheetById(crewId);
     });
 
-    html.find(".item-block .main-checkbox").change((ev) => {
-      let checkbox = ev.target;
-      let itemId = checkbox.closest(".item-block").dataset.itemId;
-      let item = this.actor.items.get(itemId);
-      if (item) {
-        return item.update({ system: { equipped: checkbox.checked } });
-      }
-    });
-
-    html.find(".item-block .child-checkbox").click((ev) => {
-      let checkbox = ev.target;
-      let $main = $(checkbox).siblings(".main-checkbox");
-      $main.trigger("click");
-    });
+    // Legacy .main-checkbox and .child-checkbox handlers removed.
+    // Item toggling is now handled by the unified .item-checkbox handler above.
 
     html.find(".ability-checkbox").change(async (ev) => {
       ev.preventDefault();
@@ -1369,16 +1478,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
       }
     });
 
-    html.find(".item-block .main-checkbox").change(async (ev) => {
-      let checkbox = ev.target;
-      let item_id = checkbox.closest(".item-block").dataset.itemId;
-      await Utils.toggleOwnership(
-        checkbox.checked,
-        this.actor,
-        "item",
-        item_id
-      );
-    });
+    // Duplicate .main-checkbox change handler removed.
+    // Item toggling is now handled by the unified .item-checkbox handler above.
 
     //this could probably be cleaner. Numbers instead of text would be fine, but not much easier, really.
     Utils.bindStandingToggles(this, html);

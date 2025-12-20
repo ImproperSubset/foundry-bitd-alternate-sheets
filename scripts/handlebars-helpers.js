@@ -188,29 +188,45 @@ export const registerHandlebarsHelpers = function () {
     return accum;
   });
 
-  Handlebars.registerHelper("item-equipped", function (actor, id) {
+  Handlebars.registerHelper("item-equipped", function (actor, itemOrId) {
     const actorDoc = actor?.items ? actor : game.actors.get(actor?._id);
     const equippedItems =
       typeof actorDoc?.getFlag === "function"
         ? actorDoc.getFlag("bitd-alternate-sheets", "equipped-items")
         : actorDoc?.flags?.["bitd-alternate-sheets"]?.["equipped-items"];
 
+    // Resolve item ID and Item Object
+    let id = itemOrId;
+    let item = null;
+
+    if (typeof itemOrId === "object" && itemOrId !== null) {
+      id = itemOrId._id || itemOrId.id;
+      item = itemOrId;
+    }
+
+    // 1. Check for explicit flag (true or false)
     if (equippedItems && Object.prototype.hasOwnProperty.call(equippedItems, id)) {
       return Boolean(equippedItems[id]);
     }
 
-    const items = actorDoc?.items;
-    const item =
-      items?.get?.(id) ||
-      (Array.isArray(items)
-        ? items.find((i) => i?.id === id || i?._id === id)
-        : null);
+    // 2. Resolve Item Object if we only had ID
+    if (!item && actorDoc) {
+      const items = actorDoc.items;
+      item =
+        items?.get?.(id) ||
+        (Array.isArray(items)
+          ? items.find((i) => i?.id === id || i?._id === id)
+          : null);
+    }
 
+    // 3. Check Default logic based on Load
     const load = item?.system?.load ?? item?.load;
-    const defaultEquipped = load === 0 || load === "0" || load === undefined;
-    if (defaultEquipped) return true;
+    // Default to equipped if load is 0, "0", or undefined (assumed free/virtual default)
+    const isZeroLoad = load === 0 || load === "0" || load === undefined;
 
-    // Fallback to item.equipped if present on the document
+    if (isZeroLoad) return true;
+
+    // 4. Fallback to underlying equipped state if it exists
     return Boolean(item?.system?.equipped);
   });
 

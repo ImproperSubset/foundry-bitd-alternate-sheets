@@ -455,5 +455,5 @@ function setupGlobalClockHandlers() {
     }
   });
 
-  console.log("[BITD-ALT] Global clock handlers initialized");
+
 }
