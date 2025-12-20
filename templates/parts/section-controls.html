@@ -22,7 +22,7 @@
   </div>
   <div class="header-right">
     {{#if showLoadSelector}}
-    <div class="load-inline header-control">
+    <div class="load-inline header-control {{#if (gt loadout max_load)}}over-max{{/if}}">
       <label for="{{sectionKey}}-load-selector">{{localize "BITD.Load"}}:</label>
       <select id="{{sectionKey}}-load-selector" name="system.selected_load_level">
         {{selectOptions load_levels selected=system.selected_load_level localize=true}}

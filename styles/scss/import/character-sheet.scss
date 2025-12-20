@@ -271,6 +271,14 @@
           font-size: 0.9em;
           color: #fff;
         }
+
+        &.over-max {
+          label,
+          select,
+          .load-stats {
+            color: $red;
+          }
+        }
       }
     }
 
@@ -914,6 +922,14 @@
                 .load-stats {
                   font-size: 0.9em;
                   color: #fff;
+                }
+
+                &.over-max {
+                  label,
+                  select,
+                  .load-stats {
+                    color: $red;
+                  }
                 }
               }
             }
