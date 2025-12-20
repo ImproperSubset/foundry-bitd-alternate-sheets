@@ -549,11 +549,19 @@ export class Utils {
             newItem,
         }, { render: false });
       } else {
-        if (!equipped_items[item_blueprint.id]) return;
-        // Atomic Remove
-        await actor.update({
-          [`flags.bitd-alternate-sheets.equipped-items.-=${id}`]: null,
-        }, { render: false });
+        const load = item_blueprint.system?.load;
+        if (load === 0 || load === "0") {
+          await actor.update({
+            [`flags.bitd-alternate-sheets.equipped-items.${item_blueprint.id}`]:
+              false,
+          }, { render: false });
+        } else {
+          if (!equipped_items[item_blueprint.id]) return;
+          // Atomic Remove
+          await actor.update({
+            [`flags.bitd-alternate-sheets.equipped-items.-=${id}`]: null,
+          }, { render: false });
+        }
       }
     }
   }

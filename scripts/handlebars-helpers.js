@@ -194,7 +194,12 @@ export const registerHandlebarsHelpers = function () {
       "bitd-alternate-sheets",
       "equipped-items"
     );
-    return equipped_items ? equipped_items[id] : false;
+    if (equipped_items && Object.prototype.hasOwnProperty.call(equipped_items, id)) {
+      return Boolean(equipped_items[id]);
+    }
+    const item = actor_doc.items?.get(id);
+    const load = item?.system?.load;
+    return load === 0 || load === "0";
   });
 
   Handlebars.registerHelper("clean-html", function (html) {
