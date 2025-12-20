@@ -501,10 +501,18 @@ export class Utils {
       } else {
         const ownedDoc = actor.getEmbeddedDocument("Item", id);
         if (ownedDoc) {
-          await actor.deleteEmbeddedDocuments("Item", [id], {
-            render: false,
-            renderSheet: false,
-          });
+          // Only auto-delete on uncheck if it's a native playbook ability.
+          // Otherwise, it stays in the list as a "slotted" ability with 0 progress.
+          const currentPlaybook = actor.items.find((i) => i.type === "class")?.name;
+          const itemClass =
+            ownedDoc.system?.class ?? ownedDoc.system?.associated_class;
+          // If it's a native ability, delete it (it falls back to the virtual ghost)
+          if (itemClass && itemClass === currentPlaybook) {
+            await actor.deleteEmbeddedDocuments("Item", [id], {
+              render: false,
+              renderSheet: false,
+            });
+          }
           return;
         }
 
@@ -516,10 +524,17 @@ export class Utils {
           (item) => item.name === item_source_name
         );
         if (matching_owned_item) {
-          await actor.deleteEmbeddedDocuments("Item", [matching_owned_item.id], {
-            render: false,
-            renderSheet: false,
-          });
+          const currentPlaybook = actor.items.find((i) => i.type === "class")?.name;
+          const itemClass =
+            matching_owned_item.system?.class ??
+            matching_owned_item.system?.associated_class;
+
+          if (itemClass && itemClass === currentPlaybook) {
+            await actor.deleteEmbeddedDocuments("Item", [matching_owned_item.id], {
+              render: false,
+              renderSheet: false,
+            });
+          }
         }
       }
     } else if (type == "item") {
