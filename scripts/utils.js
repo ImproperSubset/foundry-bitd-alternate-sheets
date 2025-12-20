@@ -1,8 +1,8 @@
 import { BladesAlternateActorSheet } from "./blades-alternate-actor-sheet.js";
 import { queueUpdate } from "./lib/update-queue.js";
 import { enrichHTML as compatEnrichHTML } from "./compat.js";
-import { getAllItemsByType, getFilteredActors, getSourcedItemsByType } from "./utils/collections.js";
-import { strip as stripHtml, convertArrayToBooleanObject, convertBooleanObjectToArray, resolveDescription } from "./utils/text.js";
+import * as collections from "./utils/collections.js";
+import * as textUtils from "./utils/text.js";
 
 export const MODULE_ID = "bitd-alternate-sheets";
 
@@ -14,11 +14,11 @@ export class Utils {
 
 
   static async getFilteredActors(type, filterPath, filterValue) {
-    return getFilteredActors(type, filterPath, filterValue);
+    return collections.getFilteredActors(type, filterPath, filterValue);
   }
 
   static resolveDescription(entity) {
-    return resolveDescription(entity);
+    return textUtils.resolveDescription(entity);
   }
 
   /**
@@ -244,11 +244,11 @@ export class Utils {
    * @param {Object} game
    */
   static async getAllItemsByType(item_type) {
-    return getAllItemsByType(item_type);
+    return collections.getAllItemsByType(item_type);
   }
 
   static async getSourcedItemsByType(item_type) {
-    return getSourcedItemsByType(item_type);
+    return collections.getSourcedItemsByType(item_type);
   }
 
   static async getItemByType(item_type, item_id) {
@@ -780,15 +780,15 @@ export class Utils {
   }
 
   static strip(html) {
-    return stripHtml(html);
+    return textUtils.strip(html);
   }
 
   static convertArrayToBooleanObject(arr) {
-    return convertArrayToBooleanObject(arr);
+    return textUtils.convertArrayToBooleanObject(arr);
   }
 
   static convertBooleanObjectToArray(obj) {
-    return convertBooleanObjectToArray(obj);
+    return textUtils.convertBooleanObjectToArray(obj);
   }
 
   // This doesn't work as expected. It hasn't been updated
