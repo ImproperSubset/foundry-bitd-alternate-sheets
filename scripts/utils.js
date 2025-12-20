@@ -73,22 +73,23 @@ export class Utils {
     if (!actor || !key) return;
     const normalized = Math.max(0, Number(value) || 0);
 
-    const existingProgress = actor.getFlag(MODULE_ID, "multiAbilityProgress") || {};
-    const currentValue = existingProgress?.[key];
-    const isRemoval = normalized <= 1;
-    if ((isRemoval && currentValue === undefined) || (!isRemoval && currentValue === normalized)) {
-      return;
+    const existingProgress =
+      foundry.utils.deepClone(
+        actor.getFlag(MODULE_ID, "multiAbilityProgress")
+      ) || {};
+
+    // If value hasn't changed, do nothing.
+    if (existingProgress[key] === normalized) return;
+
+    if (normalized === 0) {
+      if (existingProgress[key] !== undefined) {
+        delete existingProgress[key];
+      }
+    } else {
+      existingProgress[key] = normalized;
     }
 
-    if (isRemoval) {
-      await actor.update({
-        [`flags.${MODULE_ID}.multiAbilityProgress.-=${key}`]: null,
-      }, { render: false });
-    } else {
-      await actor.update({
-        [`flags.${MODULE_ID}.multiAbilityProgress.${key}`]: normalized,
-      }, { render: false });
-    }
+    await actor.setFlag(MODULE_ID, "multiAbilityProgress", existingProgress);
   }
 
   static capitalizeFirstLetter(string) {
