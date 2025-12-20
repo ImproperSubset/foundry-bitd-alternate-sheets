@@ -189,17 +189,22 @@ export const registerHandlebarsHelpers = function () {
   });
 
   Handlebars.registerHelper("item-equipped", function (actor, id) {
-    let actor_doc = game.actors.get(actor._id);
-    let equipped_items = actor_doc.getFlag(
-      "bitd-alternate-sheets",
-      "equipped-items"
-    );
-    if (equipped_items && Object.prototype.hasOwnProperty.call(equipped_items, id)) {
-      return Boolean(equipped_items[id]);
+    const actorDoc = game.actors.get(actor._id) || actor;
+    const equippedItems =
+      typeof actorDoc?.getFlag === "function"
+        ? actorDoc.getFlag("bitd-alternate-sheets", "equipped-items")
+        : actorDoc?.flags?.["bitd-alternate-sheets"]?.["equipped-items"];
+
+    if (equippedItems && Object.prototype.hasOwnProperty.call(equippedItems, id)) {
+      return Boolean(equippedItems[id]);
     }
-    const item = actor_doc.items?.get(id);
+
+    const item = actorDoc?.items?.get?.(id);
     const load = item?.system?.load;
-    return load === 0 || load === "0";
+    if (load === 0 || load === "0") return true;
+
+    // Fallback to item.equipped if present on the document
+    return Boolean(item?.system?.equipped);
   });
 
   Handlebars.registerHelper("clean-html", function (html) {
