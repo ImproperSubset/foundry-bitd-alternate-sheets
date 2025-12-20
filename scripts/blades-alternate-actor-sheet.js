@@ -647,8 +647,19 @@ export class BladesAlternateActorSheet extends BladesSheet {
       const ownsAbility = Boolean(ownedAbilityId);
 
       let progress = Math.max(0, Math.min(storedProgress, cost));
+      // Only force native playbook abilities to 1 progress if owned.
+      // Non-native abilities can be owned but have 0 progress (unchecked).
+      const currentPlaybook = this.actor.items.find((i) => i.type === "class")?.name;
+      const itemClass = ability.system?.class ?? ability.system?.associated_class;
+
       if (ownsAbility && progress < 1) {
-        progress = 1;
+        // If it's native, it should have been deleted if < 1. 
+        // If it's still here and owned, it implies > 0, but if calculation says 0, 
+        // we might be in a transitional state or it's a legacy artifact. 
+        // Sticking to "Native Owned = min 1" generally matches the "Virtual Ghost" behavior.
+        if (itemClass && itemClass === currentPlaybook) {
+          progress = 1;
+        }
       }
 
       ability._progress = progress;
