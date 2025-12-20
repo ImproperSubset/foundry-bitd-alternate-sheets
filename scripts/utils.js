@@ -1,6 +1,8 @@
 import { BladesAlternateActorSheet } from "./blades-alternate-actor-sheet.js";
 import { queueUpdate } from "./lib/update-queue.js";
 import { enrichHTML as compatEnrichHTML } from "./compat.js";
+import { getAllItemsByType, getFilteredActors, getSourcedItemsByType } from "./utils/collections.js";
+import { strip as stripHtml, convertArrayToBooleanObject, convertBooleanObjectToArray, resolveDescription } from "./utils/text.js";
 
 export const MODULE_ID = "bitd-alternate-sheets";
 
@@ -12,41 +14,11 @@ export class Utils {
 
 
   static async getFilteredActors(type, filterPath, filterValue) {
-    // 1. Fetch Candidates (World + Compendium based on settings)
-    const rawList = await Utils.getSourcedItemsByType(type);
-
-    // 2. Filter Candidates
-    const filtered = rawList.filter((a) => {
-      const val = foundry.utils.getProperty(a, filterPath ?? "");
-      // Loose equality to handle potential string/number mismatches, though unlikely for class strings
-      return val === filterValue;
-    });
-
-    // 3. Map to Card Format
-    return filtered.map((actor) => ({
-      _id: actor._id || actor.id,
-      name: actor.name,
-      img: actor.img || actor.prototypeToken?.texture?.src || "icons/svg/mystery-man.svg",
-      type: actor.type,
-      system: {
-        description: Utils.resolveDescription(actor),
-        // Expose potential filtering fields
-        associated_crew_type: actor.system.associated_crew_type || actor.system.recruit_type || "",
-      },
-    }));
+    return getFilteredActors(type, filterPath, filterValue);
   }
 
   static resolveDescription(entity) {
-    if (!entity) return "";
-    const system = entity.system || {};
-    // Fallback chain: description_short -> description -> notes -> biography
-    return (
-      system.description_short ||
-      system.description ||
-      system.notes ||
-      system.biography ||
-      ""
-    );
+    return resolveDescription(entity);
   }
 
   /**
@@ -272,117 +244,11 @@ export class Utils {
    * @param {Object} game
    */
   static async getAllItemsByType(item_type) {
-    let list_of_items = [];
-    let world_items = [];
-    let compendium_items = [];
-
-    if (item_type === "npc") {
-      world_items = game.actors
-        .filter((e) => e.type === item_type)
-        .map((e) => {
-          return e;
-        });
-    } else {
-      world_items = game.items
-        .filter((e) => e.type === item_type)
-        .map((e) => {
-          return e;
-        });
-    }
-
-    // Handle pluralization for pack lookup
-    const packName = item_type === "npc" ? "npcs" : item_type;
-    // Try explicit ID first, then generic name search
-    let pack = game.packs.get("blades-in-the-dark." + packName) ||
-      game.packs.get("blades-in-the-dark." + item_type) ||
-      game.packs.find((e) => e.metadata.name === packName) ||
-      game.packs.find((e) => e.metadata.name === item_type);
-
-    if (pack && typeof pack.getDocuments === "function") {
-      let compendium_content = await pack.getDocuments();
-      compendium_items = compendium_content.map((e) => {
-        return e;
-      });
-    }
-
-    list_of_items = world_items.concat(compendium_items);
-    list_of_items.sort(function (a, b) {
-      let nameA = a.name.toUpperCase();
-      let nameB = b.name.toUpperCase();
-      return nameA.localeCompare(nameB);
-    });
-    return list_of_items;
+    return getAllItemsByType(item_type);
   }
 
   static async getSourcedItemsByType(item_type) {
-    const populateFromCompendia = game.settings.get(
-      "bitd-alternate-sheets",
-      "populateFromCompendia"
-    );
-    const populateFromWorld = game.settings.get(
-      "bitd-alternate-sheets",
-      "populateFromWorld"
-    );
-    const searchAllPacks = game.settings.get("bitd-alternate-sheets", "searchAllPacks");
-    let limited_items = [];
-
-    // 1. World Items (if enabled)
-    if (populateFromWorld) {
-      if (item_type === "npc") {
-        limited_items = limited_items.concat(game.actors.filter((actor) => actor.type === item_type));
-      } else {
-        limited_items = limited_items.concat(game.items.filter((item) => item.type === item_type));
-      }
-    }
-
-    // 2. Compendium Items (if enabled)
-    if (populateFromCompendia) {
-      if (searchAllPacks) {
-        // Universal Scan: Check ALL packs for matching content
-        const targetDocName = item_type === "npc" ? "Actor" : "Item";
-        for (const pack of game.packs) {
-          if (pack.documentName !== targetDocName) continue;
-
-          // Optimization: Check index if available? For now, fetch generic docs to be safe with filtering.
-          // Note: fetching all documents from all packs can be slow.
-          const docs = await pack.getDocuments();
-          const matches = docs.filter(d => d.type === item_type);
-          limited_items = limited_items.concat(matches);
-        }
-
-      } else {
-        // Default System-Only Scan
-        const packName = item_type === "npc" ? "npcs" : item_type;
-        const pack = game.packs.get("blades-in-the-dark." + packName) ||
-          game.packs.get("blades-in-the-dark." + item_type) ||
-          game.packs.find((e) => e.metadata.name === packName && e.metadata.packageName === "blades-in-the-dark") ||
-          game.packs.find((e) => e.metadata.name === item_type && e.metadata.packageName === "blades-in-the-dark");
-
-        if (pack) {
-          const docs = await pack.getDocuments();
-          limited_items = limited_items.concat(docs); // We assume the pack only contains the relevant type? No, compendiums can be mixed theoretically but usually typed.
-          // Filter just in case the pack is strict naming but loose content
-          // Actually system packs are usually strictly typed. But safer to filter if possible?
-          // Existing code didn't filter explicitly after getDocuments, it just mapped.
-        }
-      }
-    }
-
-    if (!populateFromCompendia && !populateFromWorld) {
-      ui.notifications.error(
-        `No playbook auto-population source has been selected in the system settings. Please choose at least one source.`,
-        { permanent: true }
-      );
-    }
-    if (limited_items) {
-      limited_items.sort(function (a, b) {
-        let nameA = a.name.toUpperCase();
-        let nameB = b.name.toUpperCase();
-        return nameA.localeCompare(nameB);
-      });
-    }
-
-    return limited_items;
+    return getSourcedItemsByType(item_type);
   }
 
   static async getItemByType(item_type, item_id) {
@@ -914,35 +780,15 @@ export class Utils {
   }
 
   static strip(html) {
-    let doc = new DOMParser().parseFromString(html, "text/html");
-    return doc.body.textContent || "";
+    return stripHtml(html);
   }
 
   static convertArrayToBooleanObject(arr) {
-    const obj = {};
-    for (const key of arr) {
-      obj[key] = true;
-    }
-    return obj;
+    return convertArrayToBooleanObject(arr);
   }
 
   static convertBooleanObjectToArray(obj) {
-    return Object.keys(obj).filter((key) => obj[key]);
-    // if(Array.isArray(obj))
-    //
-    //   let arr = [];
-    //   if(!Array.isArray(object)){
-    //     for(const el in object){
-    //       if(object[el]){
-    //         arr.push(el);
-    //       }
-    //     }
-    //     return arr;
-    //   }
-    //   else{
-    //     // console.log("Can't use convertBooleanObjectToArray on an array. Returning object untouched.");
-    //     return object;
-    //   }
+    return convertBooleanObjectToArray(obj);
   }
 
   // This doesn't work as expected. It hasn't been updated
