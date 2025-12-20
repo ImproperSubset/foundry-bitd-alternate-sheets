@@ -189,7 +189,7 @@ export const registerHandlebarsHelpers = function () {
   });
 
   Handlebars.registerHelper("item-equipped", function (actor, id) {
-    const actorDoc = game.actors.get(actor._id) || actor;
+    const actorDoc = actor?.items ? actor : game.actors.get(actor?._id);
     const equippedItems =
       typeof actorDoc?.getFlag === "function"
         ? actorDoc.getFlag("bitd-alternate-sheets", "equipped-items")
@@ -199,9 +199,15 @@ export const registerHandlebarsHelpers = function () {
       return Boolean(equippedItems[id]);
     }
 
-    const item = actorDoc?.items?.get?.(id);
-    const load = item?.system?.load;
-    if (load === 0 || load === "0") return true;
+    const items = actorDoc?.items;
+    const item =
+      items?.get?.(id) ||
+      (Array.isArray(items)
+        ? items.find((i) => i?.id === id || i?._id === id)
+        : null);
+
+    const load = item?.system?.load ?? item?.load;
+    if (load === 0 || load === "0" || load === undefined) return true;
 
     // Fallback to item.equipped if present on the document
     return Boolean(item?.system?.equipped);
