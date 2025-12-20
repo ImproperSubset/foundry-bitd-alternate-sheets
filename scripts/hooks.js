@@ -2,6 +2,7 @@ import { BladesAlternateActorSheet } from "./blades-alternate-actor-sheet.js";
 import { registerDiceSoNiceChanges } from "./dice-so-nice.js";
 import { Patch } from "./patches.js";
 import { Utils } from "./utils.js";
+import { replaceClockLinks as replaceClockLinksCompat, setupGlobalClockHandlers as setupGlobalClockHandlersCompat } from "./clocks.js";
 
 export async function registerHooks() {
   // Hooks.once('ready', () => {
