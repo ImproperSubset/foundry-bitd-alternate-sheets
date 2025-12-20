@@ -4,6 +4,7 @@ export function strip(html) {
 }
 
 export function convertArrayToBooleanObject(arr) {
+  if (!Array.isArray(arr)) return {};
   const obj = {};
   for (const key of arr) {
     obj[key] = true;
@@ -12,6 +13,7 @@ export function convertArrayToBooleanObject(arr) {
 }
 
 export function convertBooleanObjectToArray(obj) {
+  if (!obj) return [];
   return Object.keys(obj).filter((key) => obj[key]);
 }
 
