@@ -13,7 +13,4 @@
         <span class="ability-name">{{clean-name ability.name}}:</span>
         <span class="ability-description">{{{md ability.system.description}}}</span>
     </label>
-    {{#if allow_edit}}{{#unless ability.system.virtual}}<a class="ability-delete delete-button" data-type="ability"
-        data-id="{{ability._ownedId}}" data-ability-name="{{ability.name}}"><i
-            class="fas fa-trash"></i></a>{{/unless}}{{/if}}
 </div>

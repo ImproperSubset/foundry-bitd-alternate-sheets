@@ -501,7 +501,10 @@ export class Utils {
       } else {
         const ownedDoc = actor.getEmbeddedDocument("Item", id);
         if (ownedDoc) {
-          await actor.deleteEmbeddedDocuments("Item", [id], { render: false, renderSheet: false });
+          await actor.deleteEmbeddedDocuments("Item", [id], {
+            render: false,
+            renderSheet: false,
+          });
           return;
         }
 
@@ -513,7 +516,10 @@ export class Utils {
           (item) => item.name === item_source_name
         );
         if (matching_owned_item) {
-          await actor.deleteEmbeddedDocuments("Item", [matching_owned_item.id], { render: false, renderSheet: false });
+          await actor.deleteEmbeddedDocuments("Item", [matching_owned_item.id], {
+            render: false,
+            renderSheet: false,
+          });
         }
       }
     } else if (type == "item") {
@@ -792,11 +798,11 @@ export class Utils {
           return true;
         })
         .map((item) => {
-          // Clone to plain object and mark as NOT virtual
+          // Clone to plain object and mark as virtual
           const data = item.toObject ? item.toObject() : foundry.utils.deepClone(item);
           data._id = item.id;
           if (!data.system) data.system = {};
-          data.system.virtual = false;
+          data.system.virtual = true;
           data.owned = true;
           return data;
         });
