@@ -15,7 +15,6 @@ import { handleSmartEdit, openAcquaintanceChooser as openAcquaintanceChooserHelp
  * @extends {BladesSheet}
  */
 export class BladesAlternateActorSheet extends BladesSheet {
-  // playbookChangeOptions = {};
   coins_open = false;
   harm_open = false;
   load_open = false;
@@ -40,16 +39,18 @@ export class BladesAlternateActorSheet extends BladesSheet {
   }
 
   /** @override **/
-  async _onDropItem(event, droppedItem) {
-    await super._onDropItem(event, droppedItem);
-    if (!this.actor.isOwner) {
-      ui.notifications.error(
-        `You do not have sufficient permissions to edit this character. Please speak to your GM if you feel you have reached this message in error.`,
-        { permanent: true }
-      );
+  async _onDropItem(event, data) {
+    if (!this.actor.isOwner) return false;
+
+    // Block playbook (class) drops; users should use the chooser
+    const item = await Item.fromDropData(data);
+    if (item?.type === "class") {
+      ui.notifications.warn(game.i18n.localize("bitd-alt.PlaybookInstructions"));
       return false;
     }
-    await this.handleDrop(event, droppedItem);
+
+    await super._onDropItem(event, data);
+    await this.handleDrop(event, data);
   }
 
   setLocalProp(propName, value) {
@@ -72,7 +73,10 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
   /** @override **/
   async handleDrop(event, droppedEntity) {
+    if (!droppedEntity?.uuid) return;
     let droppedEntityFull = await fromUuid(droppedEntity.uuid);
+    if (!droppedEntityFull) return;
+
     switch (droppedEntityFull.type) {
       case "npc":
         await Utils.addAcquaintance(this.actor, droppedEntityFull);
@@ -84,9 +88,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       case "ability":
         // just let Foundry do its thing
         break;
-      case "class":
-        await this._onPlaybookChange(droppedEntityFull);
-        break;
       default:
         // await this.actor.setUniqueDroppedItem(droppedEntityFull);
         // await this.onDroppedDistinctItem(droppedEntityFull);
@@ -95,43 +96,69 @@ export class BladesAlternateActorSheet extends BladesSheet {
   }
 
   async switchPlaybook(newPlaybookItem) {
-    await this._resetAbilityProgressFlags();
-    await this.switchToPlaybookAcquaintances(newPlaybookItem);
-    await this.setPlaybookAttributes(newPlaybookItem);
-    // Rendering will occur from document updates; avoid extra scheduled rerenders here.
-  }
+    try {
+      if (!newPlaybookItem) {
+        this.showFilteredAcquaintances = false;
+        Utils.saveUiState(this, { showFilteredAcquaintances: false });
+      }
 
-  async switchToPlaybookAcquaintances(selected_playbook) {
-    let playbook_acquaintances = [];
-    if (selected_playbook) {
-      let all_acquaintances = await Utils.getSourcedItemsByType("npc");
-      playbook_acquaintances = all_acquaintances.filter((item) => {
-        return item.system.associated_class.trim() === selected_playbook.name;
+      const updates = { system: {} };
+
+      // 1. Progress Flags
+      const progressFlags = this.actor.getFlag(MODULE_ID, "multiAbilityProgress");
+      if (progressFlags) {
+        updates[`flags.${MODULE_ID}.-=multiAbilityProgress`] = null;
+      }
+
+      // 2. Acquaintances
+      let nextAcquaintances = [];
+      if (newPlaybookItem) {
+        const all_acquaintances = await Utils.getSourcedItemsByType("npc");
+        const playbook_acquaintances = all_acquaintances.filter((item) => {
+          return item.system.associated_class.trim() === newPlaybookItem.name;
+        });
+
+        const current_acquaintances = this.actor.system.acquaintances ?? [];
+        // Keep friend/rival/non-neutral
+        nextAcquaintances = current_acquaintances.filter(
+          (acq) => acq.standing && acq.standing !== "neutral"
+        );
+
+        // Add playbook-specific ones if not already present
+        for (const acq of playbook_acquaintances) {
+          if (!nextAcquaintances.some((existing) => (existing.id || existing._id) === (acq.id || acq._id))) {
+            nextAcquaintances.push({
+              id: acq.id,
+              name: acq.name,
+              description_short: acq.system.description_short,
+              standing: "neutral",
+            });
+          }
+        }
+      }
+      updates.system.acquaintances = nextAcquaintances;
+
+      // 3. Attributes
+      const startingAttributes = await Utils.getStartingAttributes(newPlaybookItem);
+      // Ensure all values are strings before updating (breaks multiboxes otherwise)
+      Object.keys(startingAttributes).forEach((key) => {
+        if (startingAttributes[key]) {
+          startingAttributes[key].exp = startingAttributes[key].exp.toString();
+          startingAttributes[key].exp_max = startingAttributes[key].exp_max.toString();
+        }
       });
-    }
+      updates.system.attributes = startingAttributes;
 
-    let current_acquaintances = this.actor.system.acquaintances ?? [];
-    let neutral_acquaintances = current_acquaintances.filter(
-      (acq) => acq.standing === "neutral"
-    );
-    await Utils.removeAcquaintanceArray(this.actor, neutral_acquaintances);
-    if (playbook_acquaintances.length > 0) {
-      await Utils.addAcquaintanceArray(this.actor, playbook_acquaintances);
+      // Final unified update
+      await this.actor.update(updates);
+
+      // Forces a full sheet redraw to ensure data parity after bulk updates
+      this.render(false);
+    } catch (err) {
+      ui.notifications.error(`Failed to switch playbook: ${err.message}`);
+      console.error("Playbook switch error:", err);
     }
   }
-
-  // async switchPlaybook(newPlaybookItem){
-  //   // show confirmation (ask for items to replace) - not doing this. can't be bothered. sry.
-  //   // remove old playbook (done automatically somewhere else. tbh I don't know where)
-  //   // add abilities - not adding. virtual!
-  //   // add items - virtual!
-  //   // add acquaintances - should be virtual?
-
-  //   await this.switchToPlaybookAcquaintances(newPlaybookItem);
-  //   await this.setPlaybookAttributes(newPlaybookItem);
-  //   // return newPlaybookItem;
-  //   // set skills
-  // }
 
   async generateAddExistingItemDialog(item_type) {
     let all_items = await Utils.getSourcedItemsByType(item_type);
@@ -792,8 +819,10 @@ export class BladesAlternateActorSheet extends BladesSheet {
     sheetData.showFilteredAcquaintances = this.showFilteredAcquaintances;
     sheetData.collapsedSections = this.collapsedSections;
 
-    const acquaintanceList = Array.isArray(sheetData.system.acquaintances)
-      ? sheetData.system.acquaintances
+    // Use live actor data to ensure fresh state during rapid updates
+    const liveAcquaintances = this.actor.system.acquaintances;
+    const acquaintanceList = Array.isArray(liveAcquaintances)
+      ? liveAcquaintances
       : [];
     const filteredAcqs = this.showFilteredAcquaintances
       ? acquaintanceList.filter((acq) => {
@@ -833,12 +862,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       return trimmedItem === trimmedTarget;
     });
     return owned?.id || "";
-  }
-
-  async _resetAbilityProgressFlags() {
-    const existing = this.actor.getFlag(MODULE_ID, "multiAbilityProgress");
-    if (!existing) return;
-    await this.actor.unsetFlag(MODULE_ID, "multiAbilityProgress");
   }
 
   _resolveAbilityDeletionId(abilityBlock, fallbackId, abilityName) {
@@ -989,125 +1012,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
           .css("top", e.pageY - 10 + "px")
           .css("left", e.pageX + 20 + "px");
       });
-  }
-
-  async showPlaybookChangeDialog(changed) {
-    let modifications = await this.actor.modifiedFromPlaybookDefault(
-      this.actor.system.playbook
-    );
-    return new Promise(async (resolve, reject) => {
-      if (modifications) {
-        let abilitiesToKeepOptions = {
-          name: "abilities",
-          value: "none",
-          options: {
-            all: "Keep all Abilities",
-            custom: "Keep added abilities",
-            owned: "Keep owned abilities",
-            ghost: `Keep "Ghost" abilities`,
-            none: "Replace all",
-          },
-        };
-        let acquaintancesToKeepOptions = {
-          name: "acquaintances",
-          value: "none",
-          options: {
-            all: "All contacts",
-            friendsrivals: "Keep only friends and rivals",
-            custom: "Keep any added contacts",
-            both: "Keep added contacts and friends/rivals",
-            none: "Replace all",
-          },
-        };
-        let keepSkillPointsOptions = {
-          name: "skillpoints",
-          value: "reset",
-          options: {
-            keep: "Keep current skill points",
-            reset: "Reset to new playbook starting skill points",
-          },
-        };
-        let playbookItemsToKeepOptions = {
-          name: "playbookitems",
-          value: "none",
-          options: {
-            all: "Keep all playbook items",
-            custom: "Keep added items",
-            none: "Replace all",
-          },
-        };
-        let selectTemplate = Handlebars.compile(
-          `<select name="{{name}}" class="pb-migrate-options">{{selectOptions options selected=value}}</select>`
-        );
-        let dialogContent = `
-          <p>Changes have been made to this character that would be overwritten by a playbook switch. Please select how you'd like to handle this data and click "Ok", or click "Cancel" to cancel this change.</p>
-          <p>Note that this process only uses the Item, Ability, Playbook, and NPC compendia to decide what is "default". If you have created entities outside the relevant compendia and added them to your character, those items will be considered "custom" and removed unless you choose to save.</p>
-          <h2>Changes to keep</h2>
-          <div ${modifications.newAbilities || modifications.ownedAbilities
-            ? ""
-            : "hidden"
-          }>
-            <label>Abilities to keep</label>
-            ${selectTemplate(abilitiesToKeepOptions)}
-          </div>
-          <div ${modifications.addedItems ? "" : "hidden"}>
-            <label>Playbook Items</label>
-            ${selectTemplate(playbookItemsToKeepOptions)}
-          </div>
-          <div ${modifications.skillsChanged ? "" : "hidden"}>
-            <label>Skill Points</label>
-            ${selectTemplate(keepSkillPointsOptions)}
-          </div>
-          <div ${modifications.acquaintanceList || modifications.relationships
-            ? ""
-            : "hidden"
-          }>
-            <label>Acquaintances</label>
-            ${selectTemplate(acquaintancesToKeepOptions)}
-          </div>
-        `;
-
-        let pbConfirm = new Dialog({
-          title: `Change playbook to ${await Utils.getPlaybookName(
-            changed.system.playbook
-          )}?`,
-          content: dialogContent,
-          buttons: {
-            ok: {
-              icon: '<i class="fas fa-check"></i>',
-              label: "Ok",
-              callback: async (html) => {
-                let selects = html.find("select.pb-migrate-options");
-                let selectedOptions = {};
-                for (const select of $.makeArray(selects)) {
-                  selectedOptions[select.name] = select.value;
-                }
-                resolve(selectedOptions);
-              },
-            },
-            cancel: {
-              icon: '<i class="fas fa-times"></i>',
-              label: "Cancel",
-              callback: () => {
-                reject();
-              },
-            },
-          },
-          close: () => {
-            reject();
-          },
-        });
-        pbConfirm.render(true);
-      } else {
-        let selectedOptions = {
-          abilities: "none",
-          playbookitems: "none",
-          skillpoints: "reset",
-          acquaintances: "none",
-        };
-        resolve(selectedOptions);
-      }
-    });
   }
 
   async _onRadioToggle(event) {
@@ -1848,17 +1752,4 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
   /* -------------------------------------------- */
 
-  async setPlaybookAttributes(newPlaybookItem) {
-    let attributes = await Utils.getStartingAttributes(newPlaybookItem);
-    let newAttributeData = { system: {} };
-    newAttributeData.system.attributes = attributes;
-    // this damned issue. For some reason exp and exp_max were getting grabbed as numbers instead of strings, which breaks the multiboxes helper somehow?
-    Object.keys(newAttributeData.system.attributes).map((key, index) => {
-      newAttributeData.system.attributes[key].exp =
-        newAttributeData.system.attributes[key].exp.toString();
-      newAttributeData.system.attributes[key].exp_max =
-        newAttributeData.system.attributes[key].exp_max.toString();
-    });
-    queueUpdate(() => this.actor.update(newAttributeData));
-  }
 }
