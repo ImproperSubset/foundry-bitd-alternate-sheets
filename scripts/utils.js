@@ -305,6 +305,7 @@ export class Utils {
     //not sure what was getting linked rather than copied in empty_attributes, but the JSON hack below seems to fix the weirdness I was seeing
     let attributes_to_return = foundry.utils.deepClone(empty_attributes);
     try {
+      if (!playbook_item) return attributes_to_return;
       let selected_playbook = await fromUuid(playbook_item.uuid);
       let selected_playbook_base_skills = selected_playbook.system.base_skills;
       for (const [key, value] of Object.entries(empty_attributes)) {

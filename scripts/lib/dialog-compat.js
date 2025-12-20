@@ -247,3 +247,58 @@ async function openCardSelectionDialogV1({
     dialog.render(true);
   });
 }
+
+/**
+ * Open a compatibility confirmation dialog.
+ *
+ * @param {Object} options
+ * @param {string} options.title
+ * @param {string} options.content
+ * @param {string} [options.yesLabel]
+ * @param {string} [options.noLabel]
+ * @param {boolean} [options.defaultYes=false]
+ * @returns {Promise<boolean>}
+ */
+export async function confirmDialog(options) {
+  if (supportsDialogV2()) {
+    return confirmDialogV2(options);
+  }
+  return confirmDialogV1(options);
+}
+
+async function confirmDialogV2({
+  title,
+  content,
+  yesLabel,
+  noLabel,
+  defaultYes = false,
+}) {
+  const { DialogV2 } = foundry.applications.api;
+  return await DialogV2.confirm({
+    window: { title },
+    content,
+    yes: { label: yesLabel || game.i18n.localize("Yes"), icon: "fas fa-check" },
+    no: { label: noLabel || game.i18n.localize("No"), icon: "fas fa-times" },
+    defaultYes,
+  });
+}
+
+async function confirmDialogV1({
+  title,
+  content,
+  yesLabel,
+  noLabel,
+  defaultYes = false,
+}) {
+  return await Dialog.confirm({
+    title,
+    content,
+    yes: () => true,
+    no: () => false,
+    defaultYes,
+    buttons: {
+      yes: { label: yesLabel || game.i18n.localize("Yes") },
+      no: { label: noLabel || game.i18n.localize("No") },
+    }
+  });
+}

@@ -71,11 +71,22 @@
         </div>
         <div class="crew-affiliation bio">
           {{#if allow_edit}}
+          <span class="smart-field-label" data-action="select-playbook" tabindex="0"
+            data-tooltip="{{#if selected_playbook_tooltip}}{{selected_playbook_tooltip}}{{else}}{{localize 'bitd-alt.SelectPlaybookTitle'}}{{/if}}">
+            {{#if selected_playbook.name}}{{selected_playbook.name}}{{else}}{{localize "bitd-alt.Playbook"}}{{/if}}
+          </span>
+          &bull;
           <span class="smart-field-label" data-action="select-crew" tabindex="0"
             data-tooltip="{{localize 'bitd-alt.CrewLabel'}}">
             {{#if crew.name}}{{crew.name}}{{else}}{{localize "bitd-alt.CrewLabel"}}{{/if}}
           </span>
           {{else}}
+          {{#if selected_playbook.name}}
+          <span class="smart-field-value" data-tooltip="{{selected_playbook_tooltip}}">
+            {{selected_playbook.name}}
+          </span>
+          &bull;
+          {{/if}}
           <span class="smart-field-value" data-tooltip="{{localize 'bitd-alt.CrewLabel'}}: {{crew.name}}">
             <a class="crew-name{{#if crew.hasLink}} crew-linked{{/if}}" data-crew-id="{{crew.id}}">
               {{#if crew.name}}{{crew.name}}{{else}}{{localize "bitd-alt.CrewLabel"}}{{/if}}&nbsp;<i class="fas fa-link"
@@ -129,130 +140,130 @@
             <!-- 2-Column Dock Layout -->
             <div class="dock-column" data-dock-column="left">
               {{#> "modules/bitd-alternate-sheets/templates/parts/dock-section.html"
-                sectionKey="abilities"
-                sectionClass="abilities"
-                isCollapsed=(lookup collapsedSections 'abilities')
-                label=(localize "BITD.SpecialAbilities")
-                flex=false
-                showFilter=true
-                isFiltered=showFilteredAbilities
-                filterTarget="abilities"
-                showAdd=allow_edit
-                addClass="ability-add-popup add-button"
-                addDataAttrs='data-item-type="ability" data-group-by="system.class"'
-                dockable=true
+              sectionKey="abilities"
+              sectionClass="abilities"
+              isCollapsed=(lookup collapsedSections 'abilities')
+              label=(localize "BITD.SpecialAbilities")
+              flex=false
+              showFilter=true
+              isFiltered=showFilteredAbilities
+              filterTarget="abilities"
+              showAdd=allow_edit
+              addClass="ability-add-popup add-button"
+              addDataAttrs='data-item-type="ability" data-group-by="system.class"'
+              dockable=true
               }}
-                {{> "modules/bitd-alternate-sheets/templates/parts/xp-tracks.html"
-                  value=system.experience
-                  max=system.experience_max
-                  field="system.experience"
-                  rootId=(concat actor._id "-experience")
-                  cssClass="abilities-xp-track"
-                }}
-                <section class="ability-list check-list">
-                  {{#each available_playbook_abilities as |ability index|}}
-                  {{#with ../actor as |actor|}}
-                  {{> "modules/bitd-alternate-sheets/templates/parts/ability.html" actor=actor ability=ability
-                  allow_edit=../../allow_edit}}
-                  {{/with}}
-                  {{/each}}
-                </section>
+              {{> "modules/bitd-alternate-sheets/templates/parts/xp-tracks.html"
+              value=system.experience
+              max=system.experience_max
+              field="system.experience"
+              rootId=(concat actor._id "-experience")
+              cssClass="abilities-xp-track"
+              }}
+              <section class="ability-list check-list">
+                {{#each available_playbook_abilities as |ability index|}}
+                {{#with ../actor as |actor|}}
+                {{> "modules/bitd-alternate-sheets/templates/parts/ability.html" actor=actor ability=ability
+                allow_edit=../../allow_edit}}
+                {{/with}}
+                {{/each}}
+              </section>
               {{/ "modules/bitd-alternate-sheets/templates/parts/dock-section.html"}}
 
               {{#> "modules/bitd-alternate-sheets/templates/parts/dock-section.html"
-                sectionKey="items"
-                sectionClass="all-items"
-                isCollapsed=(lookup collapsedSections 'items')
-                label=(localize "bitd-alt.items")
-                flex=true
-                showFilter=false
-                isFiltered=false
-                filterTarget="general-items"
-                showAdd=allow_edit
-                addClass="chooser-add-item add-button"
-                addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-item-scope="all"'
-                showLoadSelector=true
-                dockable=true
+              sectionKey="items"
+              sectionClass="all-items"
+              isCollapsed=(lookup collapsedSections 'items')
+              label=(localize "bitd-alt.items")
+              flex=true
+              showFilter=false
+              isFiltered=false
+              filterTarget="general-items"
+              showAdd=allow_edit
+              addClass="chooser-add-item add-button"
+              addDataAttrs='data-action="chooser-add-item" data-item-type="item" data-item-scope="all"'
+              showLoadSelector=true
+              dockable=true
               }}
-                <div class="item-subsection">
-                  {{> "modules/bitd-alternate-sheets/templates/parts/item-list-section.html"
-                    listClass=""
-                    items=my_items
-                    actor=actor
-                    allow_edit=allow_edit
-                  }}
-                </div>
-                <div class="item-subsection">
+              <div class="item-subsection">
                 {{> "modules/bitd-alternate-sheets/templates/parts/item-list-section.html"
-                  listClass=""
-                  items=generic_items
-                  actor=actor
-                  allow_edit=allow_edit
+                listClass=""
+                items=my_items
+                actor=actor
+                allow_edit=allow_edit
                 }}
-                </div>
+              </div>
+              <div class="item-subsection">
+                {{> "modules/bitd-alternate-sheets/templates/parts/item-list-section.html"
+                listClass=""
+                items=generic_items
+                actor=actor
+                allow_edit=allow_edit
+                }}
+              </div>
               {{/ "modules/bitd-alternate-sheets/templates/parts/dock-section.html"}}
             </div>
 
             <div class="dock-column" data-dock-column="right">
               {{#> "modules/bitd-alternate-sheets/templates/parts/dock-section.html"
-                sectionKey="harm"
-                sectionClass="harm"
-                isCollapsed=(lookup collapsedSections 'harm')
-                label=(localize "BITD.Harm")
-                flex=false
-                showFilter=false
-                isFiltered=false
-                filterTarget="harm"
-                showAdd=false
-                dockable=true
+              sectionKey="harm"
+              sectionClass="harm"
+              isCollapsed=(lookup collapsedSections 'harm')
+              label=(localize "BITD.Harm")
+              flex=false
+              showFilter=false
+              isFiltered=false
+              filterTarget="harm"
+              showAdd=false
+              dockable=true
               }}
-                {{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}
+              {{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}
               {{/ "modules/bitd-alternate-sheets/templates/parts/dock-section.html"}}
 
               {{#> "modules/bitd-alternate-sheets/templates/parts/dock-section.html"
-                sectionKey="acquaintances"
-                sectionClass="friends-rivals"
-                isCollapsed=(lookup collapsedSections 'acquaintances')
-                label=(localize acquaintances_label)
-                flex=false
-                showFilter=true
-                isFiltered=showFilteredAcquaintances
-                filterTarget="acquaintances"
-                showAdd=allow_edit
-                addClass="chooser-add-acquaintance add-button"
-                addDataAttrs='data-action="chooser-add-acquaintance"'
-                dockable=true
+              sectionKey="acquaintances"
+              sectionClass="friends-rivals"
+              isCollapsed=(lookup collapsedSections 'acquaintances')
+              label=(localize acquaintances_label)
+              flex=false
+              showFilter=true
+              isFiltered=showFilteredAcquaintances
+              filterTarget="acquaintances"
+              showAdd=allow_edit
+              addClass="chooser-add-acquaintance add-button"
+              addDataAttrs='data-action="chooser-add-acquaintance"'
+              dockable=true
               }}
-                {{#if display_acquaintances}}
-                {{#each display_acquaintances}}
-                <div class="acquaintance" data-acquaintance="{{this.id}}">
-                  {{> "modules/bitd-alternate-sheets/templates/parts/acquaintance-body.html" id=this.id
-                  name=this.name
-                  standing=this.standing description_short=this.description_short}}
-                </div>
-                {{/each}}
-                {{/if}}
+              {{#if display_acquaintances}}
+              {{#each display_acquaintances}}
+              <div class="acquaintance" data-acquaintance="{{this.id}}">
+                {{> "modules/bitd-alternate-sheets/templates/parts/acquaintance-body.html" id=this.id
+                name=this.name
+                standing=this.standing description_short=this.description_short}}
+              </div>
+              {{/each}}
+              {{/if}}
               {{/ "modules/bitd-alternate-sheets/templates/parts/dock-section.html"}}
 
               {{#> "modules/bitd-alternate-sheets/templates/parts/dock-section.html"
-                sectionKey="xp-notes"
-                sectionClass="xp-notes"
-                isCollapsed=(lookup collapsedSections 'xp-notes')
-                label="XP"
-                flex=false
-                showFilter=false
-                isFiltered=false
-                filterTarget="xp-notes"
-                showAdd=false
-                dockable=true
+              sectionKey="xp-notes"
+              sectionClass="xp-notes"
+              isCollapsed=(lookup collapsedSections 'xp-notes')
+              label="XP"
+              flex=false
+              showFilter=false
+              isFiltered=false
+              filterTarget="xp-notes"
+              showAdd=false
+              dockable=true
               }}
-                <ul>
-                  <li>{{localize "BITD.ClassExpClue1"}}</li>
-                  <p>{{localize "BITD.ClassExpClueDescription"}}</p>
-                  <li>{{selected_playbook.system.experience_clues}}</li>
-                  <li>{{localize "BITD.ClassExpClue2"}}</li>
-                  <li>{{localize "BITD.ClassExpClue3"}}</li>
-                </ul>
+              <ul>
+                <li>{{localize "BITD.ClassExpClue1"}}</li>
+                <p>{{localize "BITD.ClassExpClueDescription"}}</p>
+                <li>{{selected_playbook.system.experience_clues}}</li>
+                <li>{{localize "BITD.ClassExpClue2"}}</li>
+                <li>{{localize "BITD.ClassExpClue3"}}</li>
+              </ul>
               {{/ "modules/bitd-alternate-sheets/templates/parts/dock-section.html"}}
             </div>
           </div>

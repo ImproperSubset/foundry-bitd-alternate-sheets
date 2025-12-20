@@ -3,7 +3,7 @@ import { BladesActiveEffect } from "../../../systems/blades-in-the-dark/module/b
 import { Utils, MODULE_ID } from "./utils.js";
 import { Profiler } from "./profiler.js";
 import { queueUpdate } from "./lib/update-queue.js";
-import { openCrewSelectionDialog } from "./lib/dialog-compat.js";
+import { openCrewSelectionDialog, openCardSelectionDialog, confirmDialog } from "./lib/dialog-compat.js";
 import { enrichHTML } from "./compat.js";
 import { initDockableSections } from "./ui/dockable-sections.js";
 import { handleSmartEdit, openAcquaintanceChooser as openAcquaintanceChooserHelper, openItemChooser as openItemChooserHelper } from "./sheets/actor/smart-edit.js";
@@ -85,28 +85,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
         // just let Foundry do its thing
         break;
       case "class":
-        // let d = new Dialog({
-        //   title: game.i18n.localize("bitd-alt.SwitchPlaybook"),
-        //   content:  `<h3>This will reset your owned abilities, skill points, and acquaintances. Do you wish to continue?`,
-        //   buttons: {
-        //     ok: {
-        //       icon: "<i class='fas fa-check'></i>",
-        //       label: game.i18n.localize("bitd-alt.Ok"),
-        //       callback: async (html)=> {
-        //         await this.switchPlaybook(droppedEntityFull);
-        //       }
-        //     },
-        //     cancel: {
-        //       icon: "<i class='fas fa-times'></i>",
-        //       label: game.i18n.localize("bitd-alt.Cancel"),
-        //       callback: ()=> close()
-        //     }
-        //   },
-        //   close: (html) => {
-        //   }
-        // }, {classes:["add-existing-dialog"], width: "650"});
-        // d.render(true);
-        await this.switchPlaybook(droppedEntityFull);
+        await this._onPlaybookChange(droppedEntityFull);
         break;
       default:
         // await this.actor.setUniqueDroppedItem(droppedEntityFull);
@@ -123,16 +102,22 @@ export class BladesAlternateActorSheet extends BladesSheet {
   }
 
   async switchToPlaybookAcquaintances(selected_playbook) {
-    let all_acquaintances = await Utils.getSourcedItemsByType("npc");
-    let playbook_acquaintances = all_acquaintances.filter((item) => {
-      return item.system.associated_class.trim() === selected_playbook.name;
-    });
-    let current_acquaintances = this.actor.system.acquaintances;
+    let playbook_acquaintances = [];
+    if (selected_playbook) {
+      let all_acquaintances = await Utils.getSourcedItemsByType("npc");
+      playbook_acquaintances = all_acquaintances.filter((item) => {
+        return item.system.associated_class.trim() === selected_playbook.name;
+      });
+    }
+
+    let current_acquaintances = this.actor.system.acquaintances ?? [];
     let neutral_acquaintances = current_acquaintances.filter(
       (acq) => acq.standing === "neutral"
     );
     await Utils.removeAcquaintanceArray(this.actor, neutral_acquaintances);
-    await Utils.addAcquaintanceArray(this.actor, playbook_acquaintances);
+    if (playbook_acquaintances.length > 0) {
+      await Utils.addAcquaintanceArray(this.actor, playbook_acquaintances);
+    }
   }
 
   // async switchPlaybook(newPlaybookItem){
@@ -571,6 +556,8 @@ export class BladesAlternateActorSheet extends BladesSheet {
     );
     if (owned_playbooks.length == 1) {
       sheetData.selected_playbook = owned_playbooks[0];
+      const rawDesc = Utils.resolveDescription(owned_playbooks[0]);
+      sheetData.selected_playbook_tooltip = Utils.strip(rawDesc);
     }
 
     const combined_abilities_list = await this._buildAbilityList(sheetData);
@@ -881,6 +868,89 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
   async openItemChooser(filterPlaybook, itemScope = "") {
     return openItemChooserHelper(this, filterPlaybook, itemScope);
+  }
+
+  async openPlaybookChooser() {
+    const playbooks = await Utils.getSourcedItemsByType("class");
+    const choices = playbooks.map((p) => ({
+      value: p._id,
+      label: p.name,
+      img: p.img || "icons/svg/item-bag.svg",
+      description: p.system?.description ?? "",
+    }));
+
+    const result = await openCardSelectionDialog({
+      title: game.i18n.localize("bitd-alt.SelectPlaybookTitle"),
+      instructions: game.i18n.localize("bitd-alt.SelectPlaybookInstructions"),
+      okLabel: game.i18n.localize("bitd-alt.Select"),
+      cancelLabel: game.i18n.localize("bitd-alt.Cancel"),
+      clearLabel: game.i18n.localize("bitd-alt.Clear"),
+      choices,
+    });
+
+    if (result === null) {
+      await this._onPlaybookChange(null, true);
+      return;
+    }
+
+    if (!result) return; // Cancelled
+
+    const selected = playbooks.find((p) => p._id === result);
+    if (!selected) return;
+
+    await this._onPlaybookChange(selected);
+  }
+
+  async _onPlaybookChange(selected, isClear = false) {
+    const existingPlaybook = this.actor.items.find((i) => i.type === "class");
+
+    if (isClear) {
+      if (existingPlaybook) {
+        const confirm = await confirmDialog({
+          title: game.i18n.localize("bitd-alt.SwitchPlaybook"),
+          content: `<h4>${game.i18n.localize("bitd-alt.ClearPlaybookConfirmation")}</h4>`,
+          defaultYes: false,
+        });
+        if (!confirm) return;
+
+        await this.actor.deleteEmbeddedDocuments("Item", [existingPlaybook.id]);
+        await this.switchPlaybook(null);
+      }
+      return;
+    }
+
+    if (!selected) return;
+
+    if (existingPlaybook) {
+      if (existingPlaybook.name === selected.name) return; // Same playbook
+
+      const confirm = await confirmDialog({
+        title: game.i18n.localize("bitd-alt.SwitchPlaybook"),
+        content: `<h4>${game.i18n.localize("bitd-alt.SwitchPlaybookConfirmation")}</h4>`,
+        defaultYes: false,
+      });
+      if (!confirm) return;
+
+      await this.actor.deleteEmbeddedDocuments("Item", [existingPlaybook.id]);
+    }
+
+    // If it's a compendium item/virtual item, we need to create it
+    if (!this.actor.items.has(selected.id)) {
+      const itemData = {
+        name: selected.name,
+        type: "class",
+        system: foundry.utils.deepClone(selected.system ?? {}),
+        img: selected.img,
+      };
+
+      const created = await this.actor.createEmbeddedDocuments("Item", [itemData]);
+      if (created && created[0]) {
+        await this.switchPlaybook(created[0]);
+      }
+    } else {
+      // It's already an owned item (maybe dragged from another actor or just re-applied)
+      await this.switchPlaybook(selected);
+    }
   }
 
   async openAcquaintanceChooser() {
@@ -1378,6 +1448,16 @@ export class BladesAlternateActorSheet extends BladesSheet {
       }
       const crewId = event.currentTarget?.dataset?.crewId ?? "";
       await this._openCrewSheetById(crewId);
+    });
+
+    const playbookSelector = html.find('[data-action="select-playbook"]');
+    playbookSelector.on("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.allow_edit) {
+        await this.openPlaybookChooser();
+        return;
+      }
     });
     crewSelector.on("keydown", async (event) => {
       const triggerKeys = ["Enter", " ", "Space", "Spacebar"];
