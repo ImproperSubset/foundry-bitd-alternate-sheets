@@ -138,10 +138,7 @@ export async function registerHooks() {
     if (item.type === "item") {
       await Utils.toggleOwnership(false, item.parent, "item", item.id);
     }
-    if (item.type === "ability" && item.parent.type === "character") {
-      const key = Utils.getAbilityProgressKeyFromData(item.name, item.id);
-      await Utils.updateAbilityProgressFlag(item.parent, key, 0);
-    }
+    // Ability progress is now managed by the ghost slots system
   });
 
   Hooks.on("renderBladesClockSheet", async (sheet, html, options) => {

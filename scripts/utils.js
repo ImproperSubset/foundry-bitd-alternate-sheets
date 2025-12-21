@@ -125,9 +125,9 @@ export class Utils {
     const slots = Utils.getAbilitySlots(actor);
     const filtered = slots.filter((id) => id !== sourceId);
     if (filtered.length === slots.length) return; // Nothing to remove
+    // Don't suppress render - let Foundry update the sheet with fresh data
     await actor.setFlag(MODULE_ID, "addedAbilitySlots", filtered);
   }
-
 
   static capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -866,20 +866,22 @@ export class Utils {
         const currentPlaybook = liveActor.items.find((i) => i.type === "class")?.name;
 
         for (const slotId of addedSlots) {
-          // Skip if already in the list (by name match with owned item)
-          const existingBySlot = virtual_list.find((i) => i._sourceId === slotId);
-          if (existingBySlot) continue;
-
           // Fetch the source item from game
           const sourceItem = all_game_items.find((i) => i.id === slotId);
           if (!sourceItem) continue;
 
-          // Skip if it's a native playbook ability (shouldn't happen, but defensive)
+          // Skip native playbook abilities (shouldn't happen, but defensive)
           const sourceClass = sourceItem.system?.class ?? sourceItem.system?.associated_class;
           if (sourceClass === currentPlaybook) continue;
 
-          // Skip if already in list by name (owned version exists)
-          if (virtual_list.some((i) => i.name === sourceItem.name)) continue;
+          // Check if this ability is already in the list (e.g., as an owned item)
+          const existingItem = virtual_list.find((i) => i.name === sourceItem.name);
+          if (existingItem) {
+            // Mark it as an added slot so the trashcan appears
+            existingItem.addedSlot = true;
+            existingItem._sourceId = slotId;
+            continue;
+          }
 
           // Create ghost for this slot
           const ghostData = sourceItem.toObject ? sourceItem.toObject() : foundry.utils.deepClone(sourceItem);

@@ -1326,29 +1326,32 @@ export class BladesAlternateActorSheet extends BladesSheet {
       if (targetType === "ability") {
         const abilityBlock = ev.currentTarget.closest(".ability-block");
         const abilityName = abilityBlock?.dataset?.abilityName || "";
-        const abilitySourceId = abilityBlock?.dataset?.abilityId || "";
+        // Use the source ID for slot removal (for cross-playbook abilities)
+        const abilitySourceId = abilityBlock?.dataset?.abilitySourceId || abilityBlock?.dataset?.abilityId || "";
         const deletionId = this._resolveAbilityDeletionId(
           abilityBlock,
           targetId,
           abilityName
         );
 
-        // Remove the slot from the flag (so the ghost disappears)
+        // Delete the owned item first if it exists (uncheck the ability)
+        if (deletionId) {
+          await this.actor.deleteEmbeddedDocuments("Item", [deletionId]);
+        }
+
+        // Now remove the slot from the flag (removes the ghost)
         if (abilitySourceId) {
           await Utils.removeAbilitySlot(this.actor, abilitySourceId);
         }
 
-        // Delete the owned item if it exists
-        if (deletionId) {
-          await this.actor.deleteEmbeddedDocuments("Item", [deletionId], { render: false });
-        }
         if (abilityBlock) abilityBlock.dataset.abilityOwnedId = "";
+        return;
       } else {
         if (!this.actor.items.get(targetId)) return;
         await this.actor.deleteEmbeddedDocuments("Item", [targetId], { render: false });
       }
 
-      element.slideUp(200, () => this.render(false));
+      element.slideUp(200);
     });
 
     Utils.bindAllowEditToggle(this, html);
