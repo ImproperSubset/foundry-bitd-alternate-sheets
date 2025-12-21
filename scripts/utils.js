@@ -94,6 +94,41 @@ export class Utils {
     }
   }
 
+  /**
+   * Get the list of added ability slot IDs for an actor.
+   * @param {Actor} actor
+   * @returns {string[]}
+   */
+  static getAbilitySlots(actor) {
+    return actor?.getFlag(MODULE_ID, "addedAbilitySlots") || [];
+  }
+
+  /**
+   * Add a source ability ID to the actor's added ability slots.
+   * @param {Actor} actor
+   * @param {string} sourceId - The source item ID (from compendium/world)
+   */
+  static async addAbilitySlot(actor, sourceId) {
+    if (!actor || !sourceId) return;
+    const slots = Utils.getAbilitySlots(actor);
+    if (slots.includes(sourceId)) return; // Already exists
+    await actor.setFlag(MODULE_ID, "addedAbilitySlots", [...slots, sourceId]);
+  }
+
+  /**
+   * Remove a source ability ID from the actor's added ability slots.
+   * @param {Actor} actor
+   * @param {string} sourceId - The source item ID to remove
+   */
+  static async removeAbilitySlot(actor, sourceId) {
+    if (!actor || !sourceId) return;
+    const slots = Utils.getAbilitySlots(actor);
+    const filtered = slots.filter((id) => id !== sourceId);
+    if (filtered.length === slots.length) return; // Nothing to remove
+    await actor.setFlag(MODULE_ID, "addedAbilitySlots", filtered);
+  }
+
+
   static capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
   }
@@ -491,7 +526,6 @@ export class Utils {
         let all_of_type = await Utils.getSourcedItemsByType(type);
         let checked_item = all_of_type.find((item) => item.id == id);
         if (!checked_item) {
-          console.debug(`${MODULE_ID} | Utils.toggleOwnership: Item with ID ${id} not found in sourced items list. Target may already be owned.`);
           return;
         }
         let added_item = await actor.createEmbeddedDocuments("Item", [
@@ -504,18 +538,10 @@ export class Utils {
       } else {
         const ownedDoc = actor.getEmbeddedDocument("Item", id);
         if (ownedDoc) {
-          // Only auto-delete on uncheck if it's a native playbook ability.
-          // Otherwise, it stays in the list as a "slotted" ability with 0 progress.
-          const currentPlaybook = actor.items.find((i) => i.type === "class")?.name;
-          const itemClass =
-            ownedDoc.system?.class ?? ownedDoc.system?.associated_class;
-          // If it's a native ability, delete it (it falls back to the virtual ghost)
-          if (itemClass && itemClass === currentPlaybook) {
-            await actor.deleteEmbeddedDocuments("Item", [id], {
-              render: false,
-              renderSheet: false,
-            });
-          }
+          await actor.deleteEmbeddedDocuments("Item", [id], {
+            render: false,
+            renderSheet: false,
+          });
           return;
         }
 
@@ -527,17 +553,10 @@ export class Utils {
           (item) => item.name === item_source_name
         );
         if (matching_owned_item) {
-          const currentPlaybook = actor.items.find((i) => i.type === "class")?.name;
-          const itemClass =
-            matching_owned_item.system?.class ??
-            matching_owned_item.system?.associated_class;
-
-          if (itemClass && itemClass === currentPlaybook) {
-            await actor.deleteEmbeddedDocuments("Item", [matching_owned_item.id], {
-              render: false,
-              renderSheet: false,
-            });
-          }
+          await actor.deleteEmbeddedDocuments("Item", [matching_owned_item.id], {
+            render: false,
+            renderSheet: false,
+          });
         }
       }
     } else if (type == "item") {
@@ -835,6 +854,43 @@ export class Utils {
         !virtual_list.some((i) => i.name === item.name)
       ) {
         virtual_list.push(item);
+      }
+    }
+
+    // Add ghosts for added ability slots (cross-playbook abilities)
+    if (type === "ability" && data.actor) {
+      // Get the live actor document (data.actor is just the plain sheet data)
+      const liveActor = game.actors.get(data.actor._id);
+      if (liveActor) {
+        const addedSlots = Utils.getAbilitySlots(liveActor);
+        const currentPlaybook = liveActor.items.find((i) => i.type === "class")?.name;
+
+        for (const slotId of addedSlots) {
+          // Skip if already in the list (by name match with owned item)
+          const existingBySlot = virtual_list.find((i) => i._sourceId === slotId);
+          if (existingBySlot) continue;
+
+          // Fetch the source item from game
+          const sourceItem = all_game_items.find((i) => i.id === slotId);
+          if (!sourceItem) continue;
+
+          // Skip if it's a native playbook ability (shouldn't happen, but defensive)
+          const sourceClass = sourceItem.system?.class ?? sourceItem.system?.associated_class;
+          if (sourceClass === currentPlaybook) continue;
+
+          // Skip if already in list by name (owned version exists)
+          if (virtual_list.some((i) => i.name === sourceItem.name)) continue;
+
+          // Create ghost for this slot
+          const ghostData = sourceItem.toObject ? sourceItem.toObject() : foundry.utils.deepClone(sourceItem);
+          ghostData._id = sourceItem.id;
+          ghostData._sourceId = slotId;
+          if (!ghostData.system) ghostData.system = {};
+          ghostData.system.virtual = true;
+          ghostData.owned = false;
+          ghostData.addedSlot = true; // Mark as added slot for trashcan visibility
+          virtual_list.push(ghostData);
+        }
       }
     }
 

@@ -13,7 +13,7 @@
         <span class="ability-name">{{clean-name ability.name}}:</span>
         <span class="ability-description">{{{md ability.system.description}}}</span>
     </label>
-    {{#if allow_edit}}{{#if ability.owned}}<a class="ability-delete delete-button" data-type="ability"
-        data-id="{{ability._ownedId}}" data-id="{{ability._id}}" data-ability-name="{{ability.name}}"><i
+    {{#if allow_edit}}{{#if ability.addedSlot}}<a class="ability-delete delete-button" data-type="ability"
+        data-id="{{ability._ownedId}}" data-ability-name="{{ability.name}}"><i
             class="fas fa-trash"></i></a>{{/if}}{{/if}}
 </div>

@@ -219,6 +219,10 @@ export class BladesAlternateActorSheet extends BladesSheet {
                   itemelement.dataset[item_type + "Id"]
                 );
                 if (item) {
+                  // For abilities, register the slot so the ghost persists
+                  if (item_type === "ability") {
+                    await Utils.addAbilitySlot(this.actor, item.id);
+                  }
                   // Ensure we pass a plain object for document creation
                   const itemData = item.toObject ? item.toObject() : foundry.utils.deepClone(item);
                   itemsToCreate.push(itemData);
@@ -647,19 +651,9 @@ export class BladesAlternateActorSheet extends BladesSheet {
       const ownsAbility = Boolean(ownedAbilityId);
 
       let progress = Math.max(0, Math.min(storedProgress, cost));
-      // Only force native playbook abilities to 1 progress if owned.
-      // Non-native abilities can be owned but have 0 progress (unchecked).
-      const currentPlaybook = this.actor.items.find((i) => i.type === "class")?.name;
-      const itemClass = ability.system?.class ?? ability.system?.associated_class;
-
+      // If owned, ensure at least 1 progress (checked)
       if (ownsAbility && progress < 1) {
-        // If it's native, it should have been deleted if < 1. 
-        // If it's still here and owned, it implies > 0, but if calculation says 0, 
-        // we might be in a transitional state or it's a legacy artifact. 
-        // Sticking to "Native Owned = min 1" generally matches the "Virtual Ghost" behavior.
-        if (itemClass && itemClass === currentPlaybook) {
-          progress = 1;
-        }
+        progress = 1;
       }
 
       ability._progress = progress;
@@ -1332,13 +1326,22 @@ export class BladesAlternateActorSheet extends BladesSheet {
       if (targetType === "ability") {
         const abilityBlock = ev.currentTarget.closest(".ability-block");
         const abilityName = abilityBlock?.dataset?.abilityName || "";
+        const abilitySourceId = abilityBlock?.dataset?.abilityId || "";
         const deletionId = this._resolveAbilityDeletionId(
           abilityBlock,
           targetId,
           abilityName
         );
-        if (!deletionId) return;
-        await this.actor.deleteEmbeddedDocuments("Item", [deletionId], { render: false });
+
+        // Remove the slot from the flag (so the ghost disappears)
+        if (abilitySourceId) {
+          await Utils.removeAbilitySlot(this.actor, abilitySourceId);
+        }
+
+        // Delete the owned item if it exists
+        if (deletionId) {
+          await this.actor.deleteEmbeddedDocuments("Item", [deletionId], { render: false });
+        }
         if (abilityBlock) abilityBlock.dataset.abilityOwnedId = "";
       } else {
         if (!this.actor.items.get(targetId)) return;
@@ -1442,6 +1445,7 @@ export class BladesAlternateActorSheet extends BladesSheet {
           const targetId = abilityOwnedId || abilityId;
           await Utils.toggleOwnership(false, this.actor, "ability", targetId);
         }
+
 
         abilityBlock.dataset.abilityProgress = String(targetProgress);
         if (abilityKey) {
