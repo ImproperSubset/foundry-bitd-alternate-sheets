@@ -891,6 +891,65 @@
               }
             }
 
+            .coin {
+              // Use shared coins mixin for dock section layout
+              @include coins.coins($size: 15px, $margin: 3px);
+
+              .stripe {
+                font-family: Kirsty, serif;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+              }
+
+              .coins {
+
+                .hand,
+                .stash {
+                  display: inline-block;
+                  text-align: left;
+                  vertical-align: top;
+                  padding: 0 10px;
+                }
+
+                .coins-hands {
+                  display: grid;
+                  grid-template-columns: repeat(2, 15px);
+                  gap: 3px;
+                }
+              }
+
+              // Stash grid layout - all checkboxes in one container with labels on the side
+              .stash-grid {
+                display: grid;
+                grid-template-columns: auto auto;
+                gap: 6px;
+                align-items: start;
+
+                .coins-stashed {
+                  display: grid;
+                  grid-template-columns: repeat(10, 15px);
+                  grid-auto-rows: 15px;
+                  gap: 3px;
+                }
+
+                .stash-labels {
+                  display: grid;
+                  grid-template-rows: repeat(4, 15px);
+                  gap: 3px;
+                  align-content: start;
+
+                  .stash-tag {
+                    font-size: 0.85em;
+                    font-style: italic;
+                    font-weight: bold;
+                    color: $darkgray;
+                    white-space: nowrap;
+                    line-height: 15px;
+                  }
+                }
+              }
+            }
+
             .all-items {
               .item-subsection {
                 padding: 0 0 0 0.4em; // Only left padding

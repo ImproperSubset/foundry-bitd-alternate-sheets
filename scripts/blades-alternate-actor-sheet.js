@@ -15,7 +15,6 @@ import { handleSmartEdit, openAcquaintanceChooser as openAcquaintanceChooserHelp
  * @extends {BladesSheet}
  */
 export class BladesAlternateActorSheet extends BladesSheet {
-  coins_open = false;
   harm_open = false;
   load_open = false;
   allow_edit = undefined;
@@ -479,7 +478,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
     actorData.uuid = this.actor.uuid;
     sheetData.actor = actorData;
     sheetData.system = actorData.system;
-    sheetData.coins_open = this.coins_open;
     sheetData.harm_open = this.harm_open;
     sheetData.load_open = this.load_open;
     sheetData.allow_edit = this.allow_edit;
@@ -1485,10 +1483,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
 
     $(document).click((ev) => {
       let render = false;
-      if (!$(ev.target).closest(".coins-box").length) {
-        html.find(".coins-box").removeClass("open");
-        this.coins_open = false;
-      }
       if (!$(ev.target).closest(".harm-box").length) {
         html.find(".harm-box").removeClass("open");
         this.harm_open = false;
@@ -1496,13 +1490,6 @@ export class BladesAlternateActorSheet extends BladesSheet {
       if (!$(ev.target).closest(".load-box").length) {
         html.find(".load-box").removeClass("open");
         this.load_open = false;
-      }
-    });
-
-    html.find(".coins-box").click(async (ev) => {
-      if (!$(ev.target).closest(".coins-box .full-view").length) {
-        html.find(".coins-box").toggleClass("open");
-        this.coins_open = !this.coins_open;
       }
     });
 

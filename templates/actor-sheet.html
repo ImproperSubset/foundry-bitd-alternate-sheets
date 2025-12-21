@@ -12,13 +12,6 @@
           <img src="{{actor.img}}" data-edit="img" title="{{actor.name}}">
         </div>
         <div class="status-buttons">
-          <div class="coins-box {{#if coins_open}}open{{/if}} pointer">
-            <div class="mini-view">
-              <div class="placeholder"></div><span
-                class="coin-values label-text">{{system.coins}}/{{system.coins_stashed}}</span>
-            </div>
-            <div class="full-view">{{> "modules/bitd-alternate-sheets/templates/parts/coins.html" actor=actor}}</div>
-          </div>
 
         </div>
         <div class="stress-trauma-box">
@@ -218,6 +211,21 @@
               dockable=true
               }}
               {{> "modules/bitd-alternate-sheets/templates/parts/harm.html" actor=actor}}
+              {{/ "modules/bitd-alternate-sheets/templates/parts/dock-section.html"}}
+
+              {{#> "modules/bitd-alternate-sheets/templates/parts/dock-section.html"
+              sectionKey="coin"
+              sectionClass="coin"
+              isCollapsed=(lookup collapsedSections 'coin')
+              label=(localize "BITD.Coin")
+              flex=false
+              showFilter=false
+              isFiltered=false
+              filterTarget="coin"
+              showAdd=false
+              dockable=true
+              }}
+              {{> "modules/bitd-alternate-sheets/templates/parts/coins.html" actor=actor}}
               {{/ "modules/bitd-alternate-sheets/templates/parts/dock-section.html"}}
 
               {{#> "modules/bitd-alternate-sheets/templates/parts/dock-section.html"
