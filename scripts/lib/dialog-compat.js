@@ -218,7 +218,7 @@ async function openCardSelectionDialogV2({
             event.target?.closest("dialog")?.querySelector("form");
           if (!formElement) {
             console.warn("bitd-alt | Could not locate dialog form element");
-            return "";
+            return undefined;
           }
           // v13: Use namespaced FormDataExtended, v12: Use global
           const FormData = foundry.applications?.ux?.FormDataExtended || FormDataExtended;
@@ -462,7 +462,7 @@ async function openTextInputDialogV2({
             event.target?.closest("dialog")?.querySelector("form");
           if (!formElement) {
             console.warn("bitd-alt | Could not locate dialog form element");
-            return "";
+            return undefined;
           }
           const FormData = foundry.applications?.ux?.FormDataExtended || FormDataExtended;
           const formData = new FormData(formElement);
